@@ -210,7 +210,7 @@ async function callOpenRouter(model, messages, apiKey) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": "https://the-pulpit.netlify.app", // update with your actual domain
-        "X-Title": "The Pulpit — Sermon Helper AI",
+        "X-Title": "The Pulpit - Sermon Helper AI",
       },
       body: JSON.stringify({
         model,
