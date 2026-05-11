@@ -214,7 +214,7 @@ async function callOpenRouter(model, messages, apiKey) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 8000,
+        max_tokens: 3500,
         temperature: 0.85,
         messages,
       }),
