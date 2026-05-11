@@ -1,0 +1,52 @@
+# ============================================================
+#  The Pulpit — Sermon Helper AI
+#  Netlify Configuration
+# ============================================================
+
+[build]
+  # The folder Netlify will publish — your HTML lives here
+  publish = "public"
+
+  # Netlify auto-discovers functions in this folder
+  functions = "netlify/functions"
+
+# ── Redirects & Proxying ─────────────────────────────────────
+
+# All requests to /api/* are proxied to Netlify Functions
+# This keeps function URLs clean and avoids CORS issues in production
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA fallback — serve index.html for any unmatched route
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
+
+# ── Security Headers ─────────────────────────────────────────
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options         = "DENY"
+    X-Content-Type-Options  = "nosniff"
+    Referrer-Policy         = "strict-origin-when-cross-origin"
+    Permissions-Policy      = "camera=(), microphone=(), geolocation=()"
+
+# ── Function Config ──────────────────────────────────────────
+
+[functions]
+  # Extend timeout for long AI generation requests (max 26s on free, 900s on Pro)
+  # Set to 26 for Netlify Starter, increase if on Pro plan
+  [functions."generate-sermon"]
+    timeout = 26
+
+# ── Environment (do NOT put real keys here — use Netlify dashboard) ─────
+# Go to: Site Settings → Environment Variables → Add variable
+#
+#   Key   : OPENROUTER_API_KEY
+#   Value : sk-or-v1-your-actual-key-here
+#
+# That's it. Never commit real keys to this file.

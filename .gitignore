@@ -1,0 +1,12 @@
+# ── Secrets — NEVER commit these ──────────────────────────
+.env
+.env.local
+.env.production
+
+# ── Node / Netlify dev ─────────────────────────────────────
+node_modules/
+.netlify/
+
+# ── OS noise ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
