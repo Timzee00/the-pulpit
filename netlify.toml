@@ -34,6 +34,8 @@
     X-Content-Type-Options  = "nosniff"
     Referrer-Policy         = "strict-origin-when-cross-origin"
     Permissions-Policy      = "camera=(), microphone=(), geolocation=()"
+    # Add CSP header to prevent injection attacks
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' fonts.googleapis.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com fonts.gstatic.com; font-src fonts.gstatic.com"
 
 # ── Function Config ──────────────────────────────────────────
 
