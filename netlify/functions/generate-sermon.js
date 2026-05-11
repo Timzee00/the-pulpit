@@ -17,9 +17,10 @@ const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 // Model priority list — first available/successful wins
 const MODEL_PRIORITY = [
-  "anthropic/claude-sonnet-4",
-  "x-ai/grok-3-beta",
-  "deepseek/deepseek-chat-v3-0324",
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "deepseek/deepseek-r1:free",
+  "mistralai/mistral-7b-instruct:free",
 ];
 
 // Request timeout in milliseconds
