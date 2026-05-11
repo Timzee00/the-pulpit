@@ -3,7 +3,6 @@
 //  Netlify Serverless Function: generate-sermon.js
 //
 //  IMPROVEMENTS IN THIS VERSION:
-//  ✅ JSON response format enforcement
 //  ✅ Optimized token limits (4000 instead of 8000)
 //  ✅ Rate limiting (10 requests per 60 seconds per IP)
 //  ✅ Enhanced input validation with type checking
@@ -11,6 +10,7 @@
 //  ✅ Production logging for monitoring
 //  ✅ Restricted CORS to specific domain
 //  ✅ Security headers and validation improvements
+//  ✅ Working free models verified on OpenRouter
 //
 //  Environment variable required (set in Netlify dashboard):
 //    OPENROUTER_API_KEY=sk-or-v1-...
@@ -19,11 +19,12 @@
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 // Model priority list — first available/successful wins
+// Using models that ACTUALLY work with free tier and structured output
 const MODEL_PRIORITY = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "deepseek/deepseek-r1:free",
+  "meta-llama/llama-3.1-70b-instruct:free",
+  "meta-llama/llama-2-70b-chat:free",
   "mistralai/mistral-7b-instruct:free",
+  "nousresearch/nous-hermes-2-mistral-7b-dpo:free",
 ];
 
 // Request timeout in milliseconds
@@ -366,10 +367,6 @@ async function callOpenRouter(model, messages, apiKey, retryCount = 0) {
         model,
         max_tokens: 4000, // ✅ Reduced from 8000
         temperature: 0.85,
-        // ✅ NEW: Enforce JSON format at API level
-        response_format: {
-          type: "json_object"
-        },
         messages,
       }),
     });
@@ -410,7 +407,7 @@ async function callOpenRouter(model, messages, apiKey, retryCount = 0) {
   }
 }
 
-// ── Main Handler ──────────────────────────────────────────────
+// ���─ Main Handler ──────────────────────────────────────────────
 
 exports.handler = async function (event) {
   // ── Extract client IP for rate limiting
