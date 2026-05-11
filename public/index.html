@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Cinzel:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
   /* ============================================================
-     The Pulpit — Complete Stylesheet (preserved from original)
+     The Pulpit — Complete Stylesheet
      ============================================================ */
   :root {
     --gold: #C9A84C;
@@ -52,7 +52,7 @@
 
   .grain {
     position: fixed; inset: 0; opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23noise)'/%3E%3C/svg%3E");
     background-size: 200px; z-index: 1; pointer-events: none;
   }
 
@@ -287,9 +287,9 @@
   .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
   /* === SUGGESTIONS DROPDOWN === */
-  .suggestions-box { display: none; background: rgba(13,10,5,0.9); border: 1px solid rgba(201,168,76,0.15); border-radius: var(--radius); margin-top: 8px; overflow: hidden; animation: fadeDown 0.3s ease both; }
+  .suggestions-box { display: none; background: rgba(13,10,5,0.9); border: 1px solid rgba(201,168,76,0.15); border-radius: var(--radius); margin-top: 8px; overflow: hidden; animation: fadeDown 0.2s ease both; }
   @keyframes fadeDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-  .suggestion-item { padding: 12px 16px; font-family: 'Cormorant Garamond', serif; font-size: 15px; cursor: pointer; border-bottom: 1px solid rgba(201,168,76,0.08); transition: background 0.15s; color: var(--parchment); }
+  .suggestion-item { padding: 12px 16px; font-family: 'Cormorant Garamond', serif; font-size: 15px; cursor: pointer; border-bottom: 1px solid rgba(201,168,76,0.08); transition: background 0.15s; }
   .suggestion-item:last-child { border-bottom: none; }
   .suggestion-item:hover { background: rgba(201,168,76,0.08); color: var(--gold-light); }
   .suggestion-category { font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 0.15em; color: var(--muted); display: block; margin-top: 3px; }
@@ -317,7 +317,7 @@
     text-align: center; position: relative; overflow: hidden;
   }
   .sermon-header-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--wine-light), var(--gold), var(--wine-light), transparent); }
-  .sermon-title-out { font-family: 'Cinzel', serif; font-size: clamp(20px, 4vw, 36px); font-weight: 700; color: var(--gold-light); margin-bottom: 12px; text-shadow: 0 0 30px rgba(201,168,76,0.2); line-height: 1.3; }
+  .sermon-title-out { font-family: 'Cinzel', serif; font-size: clamp(20px, 4vw, 36px); font-weight: 700; color: var(--gold-light); margin-bottom: 12px; text-shadow: 0 0 30px rgba(201,168,76,0.2); }
   .sermon-meta { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
   .meta-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; font-family: 'Lato', sans-serif; }
   .meta-pill svg { width: 12px; height: 12px; }
@@ -352,7 +352,7 @@
   .illustration-box { background: rgba(26,58,92,0.1); border: 1px solid rgba(26,58,92,0.25); border-radius: 4px; padding: 14px 18px; margin: 14px 0; }
   .illustration-label { font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 0.2em; color: #7BA7D0; margin-bottom: 8px; display: block; }
   .prayer-box { background: rgba(107,26,42,0.1); border: 1px solid rgba(107,26,42,0.25); border-radius: 4px; padding: 20px; font-style: italic; line-height: 1.8; }
-  .time-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--gold); font-family: 'Cinzel', serif; letter-spacing: 0.1em; margin-bottom: 14px; }
+  .time-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2); border-radius: 20px; padding: 3px 10px; font-size: 10px; color: var(--muted); }
 
   /* === MODEL BADGE === */
   .model-badge {
@@ -364,7 +364,7 @@
 
   /* === ACTION BAR === */
   .action-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
-  .action-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius); font-size: 13px; font-family: 'Cinzel', serif; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; border: 1px solid; }
+  .action-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius); font-size: 13px; font-family: 'Cinzel', serif; letter-spacing: 0.1em; cursor: pointer; border: 1px solid; transition: all 0.2s; }
   .action-btn.primary { background: linear-gradient(135deg, #8B6914, var(--gold)); border-color: var(--gold); color: var(--deep); font-weight: 600; }
   .action-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201,168,76,0.25); }
   .action-btn.ghost { background: transparent; border-color: rgba(201,168,76,0.2); color: var(--muted); }
@@ -372,7 +372,7 @@
   .action-btn svg { width: 14px; height: 14px; }
 
   /* === ERROR === */
-  .error-msg { display: none; background: rgba(107,26,42,0.15); border: 1px solid rgba(107,26,42,0.4); border-radius: var(--radius); padding: 14px 18px; font-size: 14px; color: #D4808F; margin-top: 12px; font-family: 'Lato', sans-serif; line-height: 1.5; }
+  .error-msg { display: none; background: rgba(107,26,42,0.15); border: 1px solid rgba(107,26,42,0.4); border-radius: var(--radius); padding: 14px 18px; font-size: 14px; color: #D4808F; margin-top: 16px; }
   .error-msg.visible { display: block; }
 
   /* === SCROLLBAR === */
@@ -464,7 +464,7 @@
 
     <div class="suggest-row">
       <button class="suggest-btn" onclick="suggestTitles()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 11-10 0 5 5 0 0110 0z"/></svg>
         Suggest Sermon Topics
       </button>
     </div>
@@ -553,24 +553,12 @@
 
 <script>
   // ============================================================
-  //  The Pulpit — Frontend JavaScript
-  //
-  //  SECURITY NOTE:
-  //  No API key lives here. All AI calls go to:
-  //    /api/generate-sermon  →  Netlify Function  →  OpenRouter
-  //
-  //  The rendering system (renderSermon, buildSection, etc.)
-  //  is preserved exactly from the original implementation.
+  //  The Pulpit — Frontend JavaScript (unchanged render logic)
   // ============================================================
 
-  // === CONFIGURATION ===
-  // In production this hits /.netlify/functions/generate-sermon via the redirect in netlify.toml
   const API_ENDPOINT = '/api/generate-sermon';
-
-  // Request timeout (ms) — slightly under server-side timeout
   const CLIENT_TIMEOUT_MS = 50000;
 
-  // === STATE ===
   let selectedTone = 'Inspirational & Uplifting';
   let timeEnabled = false;
   let sermonHistory = [];
@@ -596,16 +584,11 @@
     { title: "Stewardship: Managing What Heaven Has Entrusted to You", cat: "Stewardship & Giving" },
   ];
 
-  // === INIT ===
   function init() {
     loadHistory();
     renderHistoryList();
   }
 
-  // ============================================================
-  //  SECURE API CALL — sends to Netlify Function only
-  //  No API key in this file. The function handles all of that.
-  // ============================================================
   async function generateSermon() {
     const title = document.getElementById('sermonTitle').value.trim();
     if (!title) {
@@ -613,17 +596,16 @@
       return;
     }
 
-    const audience   = document.getElementById('audience').value;
+    const audience = document.getElementById('audience').value;
     const scriptureHint = document.getElementById('scriptureHint').value.trim();
-    const context    = document.getElementById('context').value.trim();
-    const timeMins   = timeEnabled
+    const context = document.getElementById('context').value.trim();
+    const timeMins = timeEnabled
       ? Math.min(Math.max(parseInt(document.getElementById('timeMinutes').value) || 30, 5), 120)
       : null;
 
     hideError();
     setLoading(true);
 
-    // Abort controller for client-side timeout
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
 
@@ -632,13 +614,11 @@
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
-        // Only send content — NO API key in the request body
         body: JSON.stringify({ title, audience, scriptureHint, context, timeMins, tone: selectedTone }),
       });
 
       clearTimeout(timer);
 
-      // Parse the response body first (even on error, it has a message)
       let data;
       try {
         data = await response.json();
@@ -646,18 +626,15 @@
         throw new Error('The server returned an unreadable response. Please try again.');
       }
 
-      // Handle HTTP-level errors
       if (!response.ok) {
         const serverMsg = data?.error || `Server error (${response.status})`;
         throw new Error(serverMsg);
       }
 
-      // At this point data.sermon is a validated, parsed object from the server
       if (!data.sermon) {
         throw new Error('The server returned an empty sermon. Please try again.');
       }
 
-      // Save to history and render
       const histId = addToHistory(data.sermon.title || title, selectedTone, audience, data.sermon, timeMins, data.model);
       activeHistoryId = histId;
       renderSermon(data.sermon, timeMins, data.model);
@@ -674,9 +651,6 @@
     }
   }
 
-  // ============================================================
-  //  HISTORY SYSTEM (localStorage — private to the browser)
-  // ============================================================
   function loadHistory() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -732,7 +706,6 @@
     if (!entry) return;
     activeHistoryId = id;
     document.getElementById('sermonTitle').value = entry.title;
-    // Restore tone chip
     document.querySelectorAll('.tone-chip').forEach(c => {
       const chipTone = c.getAttribute('onclick').match(/'([^']+)'\)$/)?.[1] || '';
       c.classList.toggle('active', chipTone === entry.tone);
@@ -789,9 +762,6 @@
     badge.classList.toggle('show', count > 0);
   }
 
-  // ============================================================
-  //  SIDEBAR CONTROLS
-  // ============================================================
   function toggleSidebar() {
     const isOpen = document.getElementById('sidebar').classList.contains('open');
     document.getElementById('sidebar').classList.toggle('open', !isOpen);
@@ -805,9 +775,6 @@
     document.getElementById('hamburgerBtn').classList.remove('open');
   }
 
-  // ============================================================
-  //  FORM CONTROLS
-  // ============================================================
   function toggleTime() {
     timeEnabled = !timeEnabled;
     document.getElementById('timeToggle').classList.toggle('on', timeEnabled);
@@ -833,15 +800,11 @@
   }
 
   function pickSuggestion(el) {
-    // Read text from first text node to exclude the category span
     const title = el.childNodes[0].textContent.trim();
     document.getElementById('sermonTitle').value = title;
     document.getElementById('suggestionsBox').style.display = 'none';
   }
 
-  // ============================================================
-  //  RENDERING SYSTEM — preserved exactly from original
-  // ============================================================
   function renderSermon(s, timeMins, model) {
     setLoading(false);
     const out = document.getElementById('sermonOutput');
@@ -861,9 +824,9 @@
           <span class="verse-text">"${escapeHtml(s.theme_verse?.text || '')}"</span>
         </div>
         <div class="sermon-meta">
-          ${timeMins ? `<span class="meta-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ~${totalTime} minutes</span>` : ''}
-          <span class="meta-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ${escapeHtml(audience)}</span>
-          <span class="meta-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${escapeHtml(selectedTone)}</span>
+          ${timeMins ? `<span class="meta-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>~${timeMins} min</span>` : ''}
+          <span class="meta-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>${escapeHtml(audience)}</span>
+          <span class="meta-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Quality Output</span>
         </div>
       </div>
 
@@ -878,7 +841,7 @@
 
       <div class="action-bar">
         <button class="action-btn primary" onclick="printSermon()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></svg>
           Print Sermon
         </button>
         <button class="action-btn ghost" onclick="copyAll(event)">
@@ -1001,36 +964,16 @@
   }
 
   function renderNotes(notes) {
-    if (!notes.length) return '<p>Notes not available.</p>';
-    return `<div class="sermon-content">
-      ${notes.map((n, i) => `
-        <div style="display:flex;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(201,168,76,0.08)">
-          <div style="width:28px;height:28px;border-radius:50%;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:12px;color:var(--gold);flex-shrink:0;margin-top:2px">${i+1}</div>
-          <p style="font-size:15px;line-height:1.7;color:var(--parchment-dark)">${escapeHtml(n)}</p>
-        </div>`).join('')}
-    </div>`;
+    if (!notes.length) return '<p>No preacher notes available.</p>';
+    return '<div class="sermon-content"><ul style="margin-left:20px;line-height:1.8">' + 
+           notes.map(n => `<li>${escapeHtml(n)}</li>`).join('') + 
+           '</ul></div>';
   }
 
-  // ============================================================
-  //  UTILITIES
-  // ============================================================
-
-  /** Prevents XSS when injecting user/AI text into innerHTML */
-  function escapeHtml(str) {
-    if (typeof str !== 'string') return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  function setLoading(on) {
-    document.getElementById('formCard').style.display = on ? 'none' : 'block';
-    document.getElementById('loadingState').classList.toggle('visible', on);
-    if (on) document.getElementById('sermonOutput').innerHTML = '';
-    document.getElementById('sermonOutput').classList.toggle('visible', false);
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   function showError(msg) {
@@ -1043,30 +986,34 @@
     document.getElementById('errorMsg').classList.remove('visible');
   }
 
-  function newSermon() {
+  function setLoading(yes) {
+    document.getElementById('loadingState').classList.toggle('visible', yes);
+    document.getElementById('formCard').style.display = yes ? 'none' : 'block';
     document.getElementById('sermonOutput').classList.remove('visible');
-    document.getElementById('sermonOutput').innerHTML = '';
-    document.getElementById('formCard').style.display = 'block';
-    activeHistoryId = null;
-    renderHistoryList();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('generateBtn').disabled = yes;
+  }
+
+  function printSermon() {
+    window.print();
   }
 
   function copyAll(event) {
-    const content = document.getElementById('sermonOutput').innerText;
-    navigator.clipboard.writeText(content).then(() => {
-      const btn = event.target.closest('button');
-      const orig = btn.innerHTML;
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
-      setTimeout(() => btn.innerHTML = orig, 2000);
-    }).catch(() => showError('Could not copy to clipboard. Try selecting the text manually.'));
+    event.preventDefault();
+    const text = document.getElementById('sermonOutput').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Sermon copied to clipboard!');
+    }).catch(() => {
+      alert('Failed to copy. Please try manually selecting and copying.');
+    });
   }
 
-  function printSermon() { window.print(); }
+  function newSermon() {
+    document.getElementById('sermonTitle').value = '';
+    document.getElementById('sermonOutput').classList.remove('visible');
+    document.getElementById('formCard').style.display = 'block';
+    document.getElementById('sermonTitle').focus();
+  }
 
-  // ============================================================
-  //  START
-  // ============================================================
   init();
 </script>
 </body>
