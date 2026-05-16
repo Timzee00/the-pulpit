@@ -24,7 +24,6 @@ const ALLOWED_ORIGIN      = process.env.ALLOWED_ORIGIN || "*";
 //  The others are direct fallbacks if the router fails.
 // -----------------------------------------------------------
 const MODELS = [
-  "openrouter/free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "google/gemma-4-26b-a4b-it:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
@@ -32,9 +31,9 @@ const MODELS = [
   "meta-llama/llama-3.2-3b-instruct:free",
 ];
 
-const TIMEOUT_MS      = 50000;
-const MAX_RETRIES     = 2;
-const RETRY_DELAY_MS  = 2000;
+const TIMEOUT_MS      = 30000;
+const MAX_RETRIES     = 0;
+const RETRY_DELAY_MS  = 1200;
 
 // ============================================================
 //  LOGGING
