@@ -576,16 +576,13 @@ async function getTranslation(sermonId, lang, sermon) {
   showTranslatingOverlay(lang);
 
   try {
-    const langLabel = LANG_CONFIG[lang].label;
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title:         `TRANSLATE_REQUEST`,
-        tone:          'translation',
-        audience:      lang,
-        context:       `You are a translator. Translate the following sermon JSON into ${langLabel} language. Keep all JSON keys in English exactly as they are. Only translate the string values. Keep Bible verse references (like "John 3:16") in English. Return ONLY the raw translated JSON object.`,
-        scriptureHint: JSON.stringify(sermon),
+        tone:       'translation',
+        targetLang: lang,
+        sermon:     sermon,
       }),
     });
 

@@ -57,6 +57,55 @@ const OPENROUTER_MODELS = [
   "meta-llama/llama-3.2-3b-instruct:free",
 ];
 
+// -----------------------------------------------------------
+//  MULTI-LANGUAGE BIBLE VERSES (wldeh/bible-api via jsDelivr CDN,
+//  free + unlimited, no API key). Used to fetch REAL verse text in
+//  the target language after translation, instead of trusting the
+//  LLM to translate Scripture accurately.
+// -----------------------------------------------------------
+const WLDEH_BASE = "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles";
+
+const BIBLE_VERSION_BY_LANG = {
+  yo: "yo-oycb", // Biblica Open Yoruba Contemporary Bible 2017
+  ha: "ha-bsrk", // Biblica Open Hausa Contemporary Bible 2020
+  ig: "ig-biuo", // Biblica Open Igbo Contemporary Bible 2020
+};
+
+const LANGUAGE_LABELS = { yo: "Yoruba", ha: "Hausa", ig: "Igbo" };
+
+// Book-name -> wldeh URL slug. NOTE: confirmed against the API's own
+// README example ("genesis", "john"); numbered/multi-word book slugs
+// (e.g. "1corinthians", "songofsolomon") are the standard convention
+// for this dataset but haven't been individually verified against
+// every version — if a specific reference 404s, enrichVersesForLanguage
+// just leaves the AI's translated text in place rather than failing.
+const BOOK_SLUGS = {
+  "genesis": "genesis", "exodus": "exodus", "leviticus": "leviticus",
+  "numbers": "numbers", "deuteronomy": "deuteronomy", "joshua": "joshua",
+  "judges": "judges", "ruth": "ruth", "1 samuel": "1samuel",
+  "2 samuel": "2samuel", "1 kings": "1kings", "2 kings": "2kings",
+  "1 chronicles": "1chronicles", "2 chronicles": "2chronicles",
+  "ezra": "ezra", "nehemiah": "nehemiah", "esther": "esther", "job": "job",
+  "psalm": "psalms", "psalms": "psalms", "proverbs": "proverbs",
+  "ecclesiastes": "ecclesiastes", "song of solomon": "songofsolomon",
+  "song of songs": "songofsolomon", "isaiah": "isaiah", "jeremiah": "jeremiah",
+  "lamentations": "lamentations", "ezekiel": "ezekiel", "daniel": "daniel",
+  "hosea": "hosea", "joel": "joel", "amos": "amos", "obadiah": "obadiah",
+  "jonah": "jonah", "micah": "micah", "nahum": "nahum",
+  "habakkuk": "habakkuk", "zephaniah": "zephaniah", "haggai": "haggai",
+  "zechariah": "zechariah", "malachi": "malachi", "matthew": "matthew",
+  "mark": "mark", "luke": "luke", "john": "john", "acts": "acts",
+  "romans": "romans", "1 corinthians": "1corinthians",
+  "2 corinthians": "2corinthians", "galatians": "galatians",
+  "ephesians": "ephesians", "philippians": "philippians",
+  "colossians": "colossians", "1 thessalonians": "1thessalonians",
+  "2 thessalonians": "2thessalonians", "1 timothy": "1timothy",
+  "2 timothy": "2timothy", "titus": "titus", "philemon": "philemon",
+  "hebrews": "hebrews", "james": "james", "1 peter": "1peter",
+  "2 peter": "2peter", "1 john": "1john", "2 john": "2john",
+  "3 john": "3john", "jude": "jude", "revelation": "revelation",
+};
+
 // ============================================================
 //  BUILD PROVIDER LIST from available env keys
 // ============================================================
@@ -143,6 +192,66 @@ async function enrichVerses(sermon) {
     log.info("Verses enriched", { count: targets.length });
   } catch (e) {
     log.warn("Verse enrichment failed silently", { error: e.message });
+  }
+  return sermon;
+}
+
+// -----------------------------------------------------------
+//  MULTI-LANGUAGE VERSE LOOKUP — replaces LLM-translated Scripture
+//  with real verse text in the target language after a translation.
+// -----------------------------------------------------------
+function parseReference(reference) {
+  if (!reference) return null;
+  const m = reference.trim().match(/^(.*?)\s+(\d+):(\d+)$/);
+  if (!m) return null;
+  return { book: m[1].trim(), chapter: m[2], verse: m[3] };
+}
+
+async function fetchVerseInLanguage(reference, lang) {
+  const version = BIBLE_VERSION_BY_LANG[lang];
+  if (!version) return null;
+  const parsed = parseReference(reference);
+  if (!parsed) return null;
+  const slug = BOOK_SLUGS[parsed.book.toLowerCase()];
+  if (!slug) {
+    log.warn("No book slug mapping", { book: parsed.book });
+    return null;
+  }
+  try {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const url   = `${WLDEH_BASE}/${version}/books/${slug}/chapters/${parsed.chapter}/verses/${parsed.verse}.json`;
+    const res   = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d?.text) return { text: d.text.replace(/\n/g, " ").trim() };
+    return null;
+  } catch { return null; }
+}
+
+async function enrichVersesForLanguage(sermon, lang) {
+  try {
+    const targets = [
+      ...(sermon.theme_verse       ? [{ obj: sermon,           key: "theme_verse" }] : []),
+      ...(sermon.main_points    || []).map(pt => ({ obj: pt,   key: "scripture"   })),
+      ...(sermon.supporting_verses || []).map(v => ({ obj: v,  key: "self"        })),
+    ];
+    let hits = 0;
+    await Promise.all(targets.map(async ({ obj, key }) => {
+      // Reference should have stayed in English per the translation
+      // prompt — that's what we look up against the language Bible.
+      const ref = key === "self" ? obj.reference : obj[key]?.reference;
+      if (!ref) return;
+      const real = await fetchVerseInLanguage(ref, lang);
+      if (!real) return; // leave the AI's translated text in place — don't break the sermon
+      hits++;
+      if (key === "self") { obj.text = real.text; }
+      else                { obj[key].text = real.text; }
+    }));
+    log.info("Language verses enriched", { lang, hits, of: targets.length });
+  } catch (e) {
+    log.warn("Language verse enrichment failed silently", { lang, error: e.message });
   }
   return sermon;
 }
@@ -273,6 +382,35 @@ Required JSON structure (return ONLY this, nothing else):
   ];
 }
 
+// -----------------------------------------------------------
+//  TRANSLATION PROMPT BUILDER — dedicated prompt, not a reuse of
+//  the sermon-writing prompt. Keeps reference fields untouched
+//  (verse TEXT gets replaced server-side via enrichVersesForLanguage,
+//  so the translation only needs to preserve which reference is which).
+// -----------------------------------------------------------
+function buildTranslationMessages(sermon, langLabel) {
+  const system = `You are an expert Bible-literate translator working on pastoral/sermon material. You translate faithfully into ${langLabel}, preserving pastoral tone, theological meaning, and emotional register. You never add, remove, summarize, or reinterpret content — only translate it.
+
+CRITICAL: Respond with ONLY a raw JSON object. No markdown fences. No backticks. No explanation. Your entire response must start with { and end with }.`;
+
+  const user = `Translate every string value in the sermon JSON below into ${langLabel}.
+
+Rules:
+- Keep every JSON key exactly as-is in English (do not translate keys)
+- Keep the exact same JSON structure, nesting, and array lengths as the input
+- Do NOT translate any "reference" field (e.g. "John 3:16") — copy those exactly as given, unchanged
+- Translate all other string values naturally and fluently: titles, hooks, exposition, illustrations, applications, prayers, notes, everything else
+- Numbers (like estimated_minutes) stay as numbers, unchanged
+
+Sermon JSON to translate:
+${JSON.stringify(sermon)}`;
+
+  return [
+    { role: "system", content: system },
+    { role: "user",   content: user   },
+  ];
+}
+
 // ============================================================
 //  API CALL WITH RETRY
 // ============================================================
@@ -365,6 +503,60 @@ const respond = (status, body) => ({
 });
 
 // ============================================================
+//  TRANSLATION HANDLER
+// ============================================================
+async function handleTranslate(body, groqKey, openrouterKey) {
+  const targetLang = (body.targetLang || "").trim();
+  const sermon      = body.sermon;
+
+  if (!LANGUAGE_LABELS[targetLang]) {
+    return respond(400, { error: `Unsupported or missing targetLang. Use one of: ${Object.keys(LANGUAGE_LABELS).join(", ")}` });
+  }
+  if (!sermon || typeof sermon !== "object") {
+    return respond(400, { error: "A sermon object is required for translation." });
+  }
+
+  const providers = buildProviders(groqKey, openrouterKey);
+  const messages   = buildTranslationMessages(sermon, LANGUAGE_LABELS[targetLang]);
+  let   lastError  = null;
+  const deadline   = Date.now() + FUNCTION_BUDGET_MS;
+  const perAttemptBuffer = TIMEOUT_MS + 500;
+
+  for (const provider of providers) {
+    if (Date.now() + perAttemptBuffer > deadline) {
+      log.warn("Stopping translation before budget exhausted", { provider: provider.name });
+      lastError = lastError || new Error("Time budget exhausted before all providers were tried");
+      break;
+    }
+    log.info("Trying provider (translation)", { provider: provider.name, targetLang });
+    try {
+      const raw    = await callProvider(provider, messages);
+      const parsed = parseJSON(raw);
+
+      if (!parsed || !validate(parsed)) {
+        log.warn("Translation failed validation", { provider: provider.name });
+        lastError = new Error(`Bad or incomplete translation from ${provider.name}`);
+        continue;
+      }
+
+      const enriched = await enrichVersesForLanguage(parsed, targetLang);
+      log.info("Translation complete", { provider: provider.name, targetLang });
+      return respond(200, { sermon: enriched, model: provider.name });
+
+    } catch (err) {
+      log.error("Provider failed (translation)", { provider: provider.name, error: err.message });
+      lastError = err;
+    }
+  }
+
+  log.error("All providers exhausted (translation)", { error: lastError?.message });
+  return respond(502, {
+    error:  "Translation is currently unavailable. Please try again in a moment.",
+    detail: lastError?.message || "Unknown error",
+  });
+}
+
+// ============================================================
 //  MAIN HANDLER
 // ============================================================
 exports.handler = async (event) => {
@@ -390,6 +582,14 @@ exports.handler = async (event) => {
     body = JSON.parse(event.body || "{}");
   } catch {
     return respond(400, { error: "Invalid request body." });
+  }
+
+  // Translation requests are a different shape entirely — handle them
+  // with their own prompt and verse lookup instead of reusing the
+  // sermon-generation path (previously done by stuffing the whole
+  // sermon into scriptureHint, which produced unreliable translations).
+  if (body.tone === "translation") {
+    return handleTranslate(body, groqKey, openrouterKey);
   }
 
   if (!body.title?.trim()) {
