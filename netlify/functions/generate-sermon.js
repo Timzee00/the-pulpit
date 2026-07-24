@@ -1,6 +1,9 @@
 // ============================================================
 //  The Pulpit - Sermon Helper AI
-//  Netlify Function: generate-sermon.js | Version 6.0
+//  Netlify Function: generate-sermon.js | Version 6.1
+//  (6.1: tightened per-attempt timeout + overall deadline so the function
+//  always returns before Netlify's own 26s hard timeout kills it — see
+//  FUNCTION_BUDGET_MS below)
 //
 //  PROVIDERS (tried in order):
 //  1. Groq    — fastest, generous free tier, no credit card
@@ -22,9 +25,14 @@ const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const BIBLE_API_BASE      = "https://bible-api.com";
 const ALLOWED_ORIGIN      = process.env.ALLOWED_ORIGIN || "*";
 
-const TIMEOUT_MS     = 50000;
-const MAX_RETRIES    = 2;
-const RETRY_DELAY_MS = 2000;
+// Netlify's function hard-timeout is 26s (see netlify.toml). Every retry/
+// fallback loop below must fit inside that with room to spare, or Netlify
+// kills the whole function and the caller gets a bare platform 502 instead
+// of our own JSON error response.
+const FUNCTION_BUDGET_MS = 22000; // total wall-clock budget for all attempts combined
+const TIMEOUT_MS         = 9000;  // per-attempt timeout (was 50000 — far too long)
+const MAX_RETRIES        = 1;     // only retry once, and only on 5xx (see callProvider)
+const RETRY_DELAY_MS     = 1200;
 
 // -----------------------------------------------------------
 //  GROQ FREE MODELS — confirmed working May 2026
@@ -300,8 +308,15 @@ async function callProvider(provider, messages, attempt = 1) {
 
     clearTimeout(timer);
 
-    // Retry on rate limit or server error
-    if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
+    // 429 = rate limited. Retrying the same model won't help within a few
+    // seconds, so fail fast and let the caller move to the next model.
+    if (res.status === 429) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`HTTP 429 (rate limited): ${t.slice(0, 150)}`);
+    }
+
+    // Retry on server error only — transient, worth one quick retry.
+    if (res.status >= 500 && res.status < 600) {
       if (attempt <= MAX_RETRIES) {
         log.warn("Retrying", { provider: provider.name, status: res.status, attempt });
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
@@ -395,11 +410,18 @@ exports.handler = async (event) => {
 
   log.info("Request received", { title: input.title, tone: input.tone });
 
-  const providers = buildProviders(groqKey, openrouterKey);
-  const messages  = buildMessages(input);
-  let   lastError = null;
+  const providers   = buildProviders(groqKey, openrouterKey);
+  const messages    = buildMessages(input);
+  let   lastError   = null;
+  const deadline    = Date.now() + FUNCTION_BUDGET_MS;
+  const perAttemptBuffer = TIMEOUT_MS + 500; // don't start an attempt we can't finish
 
   for (const provider of providers) {
+    if (Date.now() + perAttemptBuffer > deadline) {
+      log.warn("Stopping before budget exhausted", { provider: provider.name });
+      lastError = lastError || new Error("Time budget exhausted before all providers were tried");
+      break;
+    }
     log.info("Trying provider", { provider: provider.name });
     try {
       const raw    = await callProvider(provider, messages);
