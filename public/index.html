@@ -132,6 +132,36 @@
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
   @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .form-card { padding: 24px 18px; } }
   .form-group { display: flex; flex-direction: column; gap: 8px; }
+
+  /* === MODE TABS === */
+  .mode-tabs { display: flex; justify-content: center; gap: 4px; margin-top: 20px; }
+  .mode-tab { background: transparent; border: 1px solid rgba(201,168,76,0.25); color: var(--muted); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; padding: 10px 20px; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; }
+  .mode-tab:hover { color: var(--gold-light); border-color: rgba(201,168,76,0.5); }
+  .mode-tab.active { background: rgba(201,168,76,0.12); color: var(--gold); border-color: var(--gold); }
+
+  /* === BIBLE STUDY === */
+  .bible-lookup-row { display: flex; gap: 10px; margin-bottom: 18px; }
+  .bible-lookup-row input { flex: 1; }
+  .bible-browse-row { display: grid; grid-template-columns: 1.5fr 1fr 1.3fr; gap: 10px; }
+  @media (max-width: 600px) { .bible-browse-row { grid-template-columns: 1fr; } .bible-lookup-row { flex-direction: column; } }
+  .bible-passage-status { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--muted); font-size: 14px; margin-top: 14px; min-height: 18px; }
+  .bible-passage-card { background: linear-gradient(135deg, rgba(26,20,9,0.95) 0%, rgba(20,15,5,0.98) 100%); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 36px; margin-bottom: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: fadeUp 0.4s ease both; }
+  .bible-passage-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 22px; margin-bottom: 18px; letter-spacing: 0.02em; }
+  .bible-passage-text { font-family: 'Cormorant Garamond', serif; font-size: 19px; line-height: 1.85; color: var(--parchment); }
+  .bible-verse-num { color: var(--gold); font-family: 'Cinzel', serif; font-size: 12px; vertical-align: super; margin-right: 4px; opacity: 0.85; }
+  .bible-notes-section { margin-top: 32px; padding-top: 28px; border-top: 1px solid rgba(201,168,76,0.15); }
+  #bibleNotesArea { min-height: 120px; resize: vertical; font-size: 16px; line-height: 1.6; }
+  .bible-notes-status { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--muted); font-size: 13px; margin-top: 8px; height: 16px; }
+  .bible-notes-list-card { background: rgba(26,20,9,0.5); border: 1px solid rgba(201,168,76,0.12); border-radius: 8px; padding: 28px; }
+  .bible-notes-list { display: flex; flex-direction: column; gap: 10px; }
+  .bible-notes-empty { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--muted); font-size: 15px; }
+  .bible-note-item { background: rgba(201,168,76,0.05); border: 1px solid rgba(201,168,76,0.15); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: border-color 0.2s; }
+  .bible-note-item:hover { border-color: rgba(201,168,76,0.4); }
+  .bible-note-item-ref { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .bible-note-item-snippet { font-family: 'Cormorant Garamond', serif; color: var(--parchment); font-size: 15px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bible-note-item-del { float: right; background: none; border: none; color: var(--wine-light); cursor: pointer; font-size: 13px; opacity: 0.6; }
+  .bible-note-item-del:hover { opacity: 1; }
+
   .form-group.full-width { grid-column: 1 / -1; }
   label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
   input, select, textarea { background: rgba(201,168,76,0.04); border: 1px solid rgba(201,168,76,0.18); border-radius: var(--radius); color: var(--parchment); font-family: 'Cormorant Garamond', serif; font-size: 16px; padding: 12px 16px; transition: border-color 0.2s, box-shadow 0.2s; outline: none; width: 100%; }
@@ -327,9 +357,58 @@
     <div class="divider-diamond"></div>
     <div class="divider-line"></div>
   </div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tab-sermon" onclick="showMode('sermon')">✦ Sermon Generator</button>
+    <button class="mode-tab"        id="tab-bible"  onclick="showMode('bible')">📖 Bible Study</button>
+  </div>
 </header>
 
 <main>
+  <!-- BIBLE STUDY -->
+  <div class="bible-study" id="bibleStudyView" style="display:none">
+    <div class="form-card">
+      <div class="section-label">Read a Passage</div>
+
+      <div class="bible-lookup-row">
+        <input type="text" id="bibleRefInput" placeholder="e.g. John 3:16-17, or Romans 8" />
+        <button class="action-btn primary" onclick="lookupBibleRef()">Go</button>
+      </div>
+
+      <div class="bible-browse-row">
+        <select id="bibleBookSelect" onchange="onBibleBookChange()"></select>
+        <select id="bibleChapterSelect" onchange="loadBibleChapter()"></select>
+        <select id="bibleTranslationSelect" onchange="reloadCurrentPassage()">
+          <option value="web">World English Bible (WEB)</option>
+          <option value="kjv">King James Version (KJV)</option>
+          <option value="asv">American Standard Version (ASV)</option>
+          <option value="bbe">Bible in Basic English (BBE)</option>
+        </select>
+      </div>
+
+      <div class="bible-passage-status" id="biblePassageStatus"></div>
+    </div>
+
+    <div class="bible-passage-card" id="biblePassageCard" style="display:none">
+      <h2 class="bible-passage-title" id="biblePassageTitle"></h2>
+      <div class="bible-passage-text" id="biblePassageText"></div>
+
+      <div class="bible-notes-section">
+        <div class="section-label">My Notes on This Passage</div>
+        <textarea id="bibleNotesArea" placeholder="Write your study notes here — they're saved automatically to this browser." oninput="onNotesInput()"></textarea>
+        <div class="bible-notes-status" id="bibleNotesStatus"></div>
+      </div>
+    </div>
+
+    <div class="bible-notes-list-card">
+      <div class="section-label">All Saved Notes</div>
+      <div id="bibleNotesList" class="bible-notes-list">
+        <p class="bible-notes-empty" id="bibleNotesEmpty">No notes yet — write one above and it'll show up here.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERMON GENERATOR -->
+  <div class="sermon-generator" id="sermonGeneratorView">
   <!-- FORM -->
   <div class="form-card" id="formCard">
     <div class="section-label">Sermon Details</div>
@@ -405,6 +484,7 @@
 
   <!-- OUTPUT -->
   <div class="sermon-output" id="sermonOutput"></div>
+  </div><!-- /sermonGeneratorView -->
 </main>
 
 <footer><p>"Preach the word; be ready in season and out of season." — 2 Timothy 4:2</p></footer>
@@ -447,6 +527,9 @@ const UI_STRINGS = {
     prayer: 'Closing Prayer', prayerDesc: 'A pastoral blessing over the congregation',
     notes: "Preacher's Notes", notesDesc: 'Delivery tips & practical reminders',
     print: 'Print Sermon', copy: 'Copy Full Sermon', newSermon: 'New Sermon',
+    readAloud: 'Read Aloud', pause: 'Pause', resume: 'Resume', stopReading: 'Stop',
+    noVoice: 'No {lang} voice found on this device — reading in the closest available voice.',
+    generatingAudio: 'Generating…',
   },
   yo: {
     hook: 'IBERE ASOTITO', tension: 'IPA TI A WA', truth: 'OTO PATAKI',
@@ -462,6 +545,9 @@ const UI_STRINGS = {
     prayer: 'Adura Ipari', prayerDesc: 'Ibukun asọtẹlẹ lori ijọ',
     notes: 'Awọn Akọsilẹ Waasọ', notesDesc: 'Awọn imọran jiṣẹ ati awọn iranti to wulo',
     print: 'Tẹ Waasọ Jade', copy: 'Daakọ Waasọ Pipe', newSermon: 'Waasọ Titun',
+    readAloud: 'Ka Waasọ', pause: 'Duro', resume: 'Tẹsiwaju', stopReading: 'Da duro',
+    noVoice: 'A ko ri ohun {lang} lori ẹrọ yi — a maa fi ohun to sunmọ ọ ka.',
+    generatingAudio: 'A n ṣe ohun…',
   },
   ha: {
     hook: 'BUƊE MAGANA', tension: 'MATSALAR DA AKE CIKI', truth: 'GASKIYA TA TSAKIYA',
@@ -477,6 +563,9 @@ const UI_STRINGS = {
     prayer: 'Addu\'ar Rufe', prayerDesc: 'Albarka ta makiyaya akan ikilisiya',
     notes: 'Bayanin Mai Wa\'azi', notesDesc: 'Nasihohin isar da saƙo da tunatarwa masu amfani',
     print: 'Buga Wa\'azin', copy: 'Kwafi Cikakken Wa\'azin', newSermon: 'Sabon Wa\'azi',
+    readAloud: 'Karanta da Murya', pause: 'Dakata', resume: 'Ci gaba', stopReading: 'Tsaya',
+    noVoice: 'Ba a sami muryar {lang} akan wannan na\'ura ba — ana karantawa da muryar da ta fi kusa.',
+    generatingAudio: 'Ana samar da murya…',
   },
   ig: {
     hook: 'IHE IBIDO', tension: 'NSOGBU DINA', truth: 'EZIOKWU ETITI',
@@ -492,6 +581,9 @@ const UI_STRINGS = {
     prayer: 'Ekpere Njedebe', prayerDesc: 'Ngọzi nna-oche n\'elu ụlọ ọrụ',
     notes: 'Ndekọ Onye Na-akwọ Ihe', notesDesc: 'Ndụmọdụ nnyefe na ncheta bara uru',
     print: 'Bipụta Ihe Ọmụma', copy: 'Detuo Ihe Ọmụma Nile', newSermon: 'Ihe Ọmụma Ọhụụ',
+    readAloud: 'Gụọ Ya Ọnụ', pause: 'Kwụsịtụ', resume: 'Gaa n\'ihu', stopReading: 'Kwụsị',
+    noVoice: 'Enweghị olu {lang} a chọtara na ngwaọrụ a — a ga na-agụ ya na olu kacha nso.',
+    generatingAudio: 'Na-emepụta olu…',
   },
 };
 
@@ -506,6 +598,42 @@ let currentSermon    = null;  // raw English sermon data
 let currentTimeMins  = null;
 let currentLang      = localStorage.getItem(LANG_PREF_KEY) || 'en';
 let activeSermonId   = null;  // for cache keying
+
+// Read-aloud state
+const SPEECH_LANG_CODES = { en: 'en-US', yo: 'yo-NG', ha: 'ha-NG', ig: 'ig-NG' };
+let speechChunks      = [];   // array of text chunks queued for reading
+let speechChunkIndex  = 0;
+let speechState       = 'idle'; // 'idle' | 'loading' | 'speaking' | 'paused'
+let voicesReady       = false;
+
+// ============================================================
+//  BIBLE STUDY — state + static data
+// ============================================================
+const BIBLE_API_BASE   = 'https://bible-api.com';
+const BIBLE_NOTES_KEY  = 'pulpit_bible_notes'; // { [normalizedRef]: { text, refDisplay, updatedAt } }
+let currentPassageKey  = null; // normalized reference used as the notes storage key
+let notesSaveTimer     = null;
+
+// Standard Protestant canon: [Book name, chapter count]. Chapter counts are
+// fixed, public-domain facts — used only to populate the chapter dropdown.
+const BIBLE_BOOKS = [
+  ['Genesis',50],['Exodus',40],['Leviticus',27],['Numbers',36],['Deuteronomy',34],
+  ['Joshua',24],['Judges',21],['Ruth',4],['1 Samuel',31],['2 Samuel',24],
+  ['1 Kings',22],['2 Kings',25],['1 Chronicles',29],['2 Chronicles',36],
+  ['Ezra',10],['Nehemiah',13],['Esther',10],['Job',42],['Psalms',150],
+  ['Proverbs',31],['Ecclesiastes',12],['Song of Solomon',8],['Isaiah',66],
+  ['Jeremiah',52],['Lamentations',5],['Ezekiel',48],['Daniel',12],['Hosea',14],
+  ['Joel',3],['Amos',9],['Obadiah',1],['Jonah',4],['Micah',7],['Nahum',3],
+  ['Habakkuk',3],['Zephaniah',3],['Haggai',2],['Zechariah',14],['Malachi',4],
+  ['Matthew',28],['Mark',16],['Luke',24],['John',21],['Acts',28],['Romans',16],
+  ['1 Corinthians',16],['2 Corinthians',13],['Galatians',6],['Ephesians',6],
+  ['Philippians',4],['Colossians',4],['1 Thessalonians',5],['2 Thessalonians',3],
+  ['1 Timothy',6],['2 Timothy',4],['Titus',3],['Philemon',1],['Hebrews',13],
+  ['James',5],['1 Peter',5],['2 Peter',3],['1 John',5],['2 John',1],['3 John',1],
+  ['Jude',1],['Revelation',22],
+];
+
+let ttsAudioEl        = null; // reusable <audio> element for ElevenLabs playback (yo/ha/ig)
 
 const SUGGESTIONS = [
   { title: "Walking in the Light: Leaving Darkness Behind",                cat: "Salvation & Redemption"    },
@@ -532,10 +660,386 @@ function init() {
   loadHistory();
   renderHistoryList();
   updateLangButtons();
+  initSpeech();
 }
 
 // ============================================================
-//  LANGUAGE SYSTEM
+//  READ ALOUD — browser-native text-to-speech (Web Speech API)
+// ============================================================
+function initSpeech() {
+  if (!('speechSynthesis' in window)) return;
+  // Voices load asynchronously in most browsers (esp. Chrome) — the first
+  // getVoices() call often returns an empty list until this fires.
+  const markReady = () => { voicesReady = true; };
+  window.speechSynthesis.onvoiceschanged = markReady;
+  if (window.speechSynthesis.getVoices().length) markReady();
+}
+
+// ============================================================
+//  MODE SWITCHING — Sermon Generator <-> Bible Study
+// ============================================================
+let bibleInitDone = false;
+
+function showMode(mode) {
+  const sermonView = document.getElementById('sermonGeneratorView');
+  const bibleView   = document.getElementById('bibleStudyView');
+  const tabSermon   = document.getElementById('tab-sermon');
+  const tabBible    = document.getElementById('tab-bible');
+
+  if (mode === 'bible') {
+    sermonView.style.display = 'none';
+    bibleView.style.display  = 'block';
+    tabSermon.classList.remove('active');
+    tabBible.classList.add('active');
+    if (!bibleInitDone) {
+      bibleInitDone = true;
+      populateBibleBookSelect();
+      renderNotesList();
+    }
+  } else {
+    sermonView.style.display = 'block';
+    bibleView.style.display  = 'none';
+    tabBible.classList.remove('active');
+    tabSermon.classList.add('active');
+  }
+}
+
+// ============================================================
+//  BIBLE STUDY — browsing + lookup
+// ============================================================
+function populateBibleBookSelect() {
+  const sel = document.getElementById('bibleBookSelect');
+  sel.innerHTML = BIBLE_BOOKS.map(([name]) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+  onBibleBookChange(); // populates chapters + loads Genesis 1 by default
+}
+
+function onBibleBookChange() {
+  const book = document.getElementById('bibleBookSelect').value;
+  const entry = BIBLE_BOOKS.find(b => b[0] === book);
+  const chapterCount = entry ? entry[1] : 1;
+  const chSel = document.getElementById('bibleChapterSelect');
+  let opts = '';
+  for (let i = 1; i <= chapterCount; i++) opts += `<option value="${i}">Chapter ${i}</option>`;
+  chSel.innerHTML = opts;
+  loadBibleChapter();
+}
+
+function loadBibleChapter() {
+  const book = document.getElementById('bibleBookSelect').value;
+  const ch   = document.getElementById('bibleChapterSelect').value;
+  fetchAndRenderPassage(`${book} ${ch}`);
+}
+
+function lookupBibleRef() {
+  const ref = document.getElementById('bibleRefInput').value.trim();
+  if (!ref) return;
+  fetchAndRenderPassage(ref);
+}
+
+function reloadCurrentPassage() {
+  if (currentPassageKey) fetchAndRenderPassage(currentPassageKey);
+}
+
+async function fetchAndRenderPassage(reference) {
+  const statusEl = document.getElementById('biblePassageStatus');
+  const card     = document.getElementById('biblePassageCard');
+  const translation = document.getElementById('bibleTranslationSelect').value;
+
+  statusEl.textContent = 'Loading…';
+  card.style.display = 'none';
+
+  try {
+    const encoded = encodeURIComponent(reference).replace(/%20/g, '+');
+    const res = await fetch(`${BIBLE_API_BASE}/${encoded}?translation=${translation}`);
+    if (!res.ok) throw new Error(res.status === 404 ? 'Passage not found — check the reference.' : `Lookup failed (${res.status})`);
+    const data = await res.json();
+    if (!data.verses || !data.verses.length) throw new Error('Passage not found — check the reference.');
+
+    renderPassage(data);
+    statusEl.textContent = '';
+  } catch (err) {
+    statusEl.textContent = err.message || 'Could not load that passage.';
+  }
+}
+
+function renderPassage(data) {
+  const title = data.reference || 'Passage';
+  document.getElementById('biblePassageTitle').textContent = title;
+  document.getElementById('biblePassageText').innerHTML = data.verses.map(v =>
+    `<span class="bible-verse-num">${v.verse}</span>${esc(v.text.trim())} `
+  ).join('');
+  document.getElementById('biblePassageCard').style.display = 'block';
+
+  // Normalize the key so "John 3" and "john 3" share one note
+  currentPassageKey = title.toLowerCase().replace(/\s+/g, ' ').trim();
+  loadNoteForCurrentPassage();
+}
+
+// ============================================================
+//  BIBLE STUDY — notes (saved to this browser only)
+// ============================================================
+function loadBibleNotes() {
+  try { return JSON.parse(localStorage.getItem(BIBLE_NOTES_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function saveBibleNotes(notes) {
+  try { localStorage.setItem(BIBLE_NOTES_KEY, JSON.stringify(notes)); } catch {}
+}
+
+function loadNoteForCurrentPassage() {
+  const notes = loadBibleNotes();
+  const entry = notes[currentPassageKey];
+  document.getElementById('bibleNotesArea').value = entry ? entry.text : '';
+  document.getElementById('bibleNotesStatus').textContent = '';
+}
+
+function onNotesInput() {
+  clearTimeout(notesSaveTimer);
+  const statusEl = document.getElementById('bibleNotesStatus');
+  statusEl.textContent = 'Saving…';
+  notesSaveTimer = setTimeout(() => {
+    const text = document.getElementById('bibleNotesArea').value;
+    const notes = loadBibleNotes();
+    const refDisplay = document.getElementById('biblePassageTitle').textContent;
+    if (text.trim()) {
+      notes[currentPassageKey] = { text, refDisplay, updatedAt: Date.now() };
+    } else {
+      delete notes[currentPassageKey];
+    }
+    saveBibleNotes(notes);
+    statusEl.textContent = 'Saved ✓';
+    renderNotesList();
+  }, 600);
+}
+
+function renderNotesList() {
+  const notes = loadBibleNotes();
+  const keys = Object.keys(notes).sort((a, b) => notes[b].updatedAt - notes[a].updatedAt);
+  const listEl  = document.getElementById('bibleNotesList');
+  const emptyEl = document.getElementById('bibleNotesEmpty');
+
+  if (!keys.length) {
+    listEl.innerHTML = '';
+    listEl.appendChild(emptyEl);
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  listEl.innerHTML = keys.map(key => {
+    const n = notes[key];
+    const snippet = n.text.replace(/\n/g, ' ').slice(0, 90);
+    return `<div class="bible-note-item" onclick="jumpToNote('${esc(key).replace(/'/g, "\\'")}')">
+      <button class="bible-note-item-del" onclick="event.stopPropagation(); deleteNote('${esc(key).replace(/'/g, "\\'")}')" title="Delete note">✕</button>
+      <div class="bible-note-item-ref">${esc(n.refDisplay)}</div>
+      <div class="bible-note-item-snippet">${esc(snippet)}</div>
+    </div>`;
+  }).join('');
+}
+
+function jumpToNote(key) {
+  fetchAndRenderPassage(key);
+  document.getElementById('bibleStudyView').scrollIntoView({ behavior: 'smooth' });
+}
+
+function deleteNote(key) {
+  const notes = loadBibleNotes();
+  delete notes[key];
+  saveBibleNotes(notes);
+  renderNotesList();
+  if (currentPassageKey === key) {
+    document.getElementById('bibleNotesArea').value = '';
+  }
+}
+
+// Pick the best available voice for a target language. Falls back to any
+// voice sharing the base language ("yo"), then to the browser default —
+// most desktop/mobile OSes simply don't ship Yoruba/Hausa/Igbo voices, so
+// callers should treat a null "exact" match as "read anyway, but say so."
+function pickVoice(langCode) {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return { voice: null, exact: false };
+  const base = langCode.split('-')[0];
+  const exact = voices.find(v => v.lang.toLowerCase() === langCode.toLowerCase());
+  if (exact) return { voice: exact, exact: true };
+  const partial = voices.find(v => v.lang.toLowerCase().startsWith(base));
+  if (partial) return { voice: partial, exact: true };
+  const fallback = voices.find(v => v.lang.toLowerCase().startsWith('en')) || voices[0];
+  return { voice: fallback, exact: false };
+}
+
+// Builds the spoken script from a sermon object. Preacher's notes are
+// delivery tips addressed to the preacher, not congregation-facing
+// content, so they're skipped here — everything else meant to be
+// preached is included.
+function buildReadableSermon(s) {
+  const parts = [];
+  const add = (t) => { if (t && String(t).trim()) parts.push(String(t).trim()); };
+
+  add(s.title);
+  if (s.theme_verse) add(`${s.theme_verse.reference}. ${s.theme_verse.text}`);
+
+  const i = s.introduction || {};
+  add(i.hook); add(i.problem_statement); add(i.thesis);
+
+  const bg = s.background_context || {};
+  add(bg.historical); add(bg.why_it_matters_today);
+
+  (s.main_points || []).forEach((pt, idx) => {
+    add(`Point ${idx + 1}: ${pt.title || ''}`);
+    if (pt.scripture) add(`${pt.scripture.reference}. ${pt.scripture.text}`);
+    add(pt.exposition); add(pt.illustration); add(pt.application);
+  });
+
+  (s.supporting_verses || []).forEach(v => add(`${v.reference}. ${v.text}`));
+
+  const c = s.conclusion || {};
+  add(c.summary); add(c.call_to_action); add(c.closing_illustration);
+
+  add(s.altar_call);
+  add(s.closing_prayer);
+
+  return parts;
+}
+
+function toggleReadAloud() {
+  if (speechState === 'loading') return; // already generating — ignore extra clicks
+  if (!('speechSynthesis' in window) && currentLang === 'en') {
+    showTranslateStatus('Read Aloud is not supported in this browser.');
+    return;
+  }
+  if (speechState === 'speaking') { pauseReading(); return; }
+  if (speechState === 'paused')   { resumeReading(); return; }
+  startReading();
+}
+
+function startReading() {
+  if (!currentSermon) return;
+  window.speechSynthesis.cancel();
+  if (ttsAudioEl) ttsAudioEl.pause();
+
+  const sermonForLang = currentLang === 'en' ? currentSermon
+    : JSON.parse(localStorage.getItem(`${CACHE_KEY_BASE}${activeSermonId}_${currentLang}`) || 'null') || currentSermon;
+
+  speechChunks     = buildReadableSermon(sermonForLang);
+  speechChunkIndex = 0;
+
+  if (currentLang === 'en') {
+    // Free, unlimited, and English voices are near-universal — no need
+    // for a paid API here.
+    const langCode = SPEECH_LANG_CODES.en;
+    const { voice } = pickVoice(langCode);
+    speakNextChunk(voice, langCode);
+    speechState = 'speaking';
+    updateReadAloudButton();
+  } else {
+    // Yoruba/Hausa/Igbo — most devices have no native voice at all for
+    // these, so route through ElevenLabs instead (rate-limited free tier).
+    speechState = 'loading';
+    updateReadAloudButton();
+    playNextElevenLabsChunk();
+  }
+}
+
+function getAudioEl() {
+  if (!ttsAudioEl) {
+    ttsAudioEl = new Audio();
+    ttsAudioEl.addEventListener('ended', () => {
+      speechChunkIndex++;
+      if (speechState === 'speaking') playNextElevenLabsChunk();
+    });
+  }
+  return ttsAudioEl;
+}
+
+async function playNextElevenLabsChunk() {
+  if (speechChunkIndex >= speechChunks.length) {
+    speechState = 'idle';
+    updateReadAloudButton();
+    return;
+  }
+  speechState = 'loading';
+  updateReadAloudButton();
+  try {
+    const res = await fetch('/api/text-to-speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: speechChunks[speechChunkIndex], lang: currentLang }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Voice generation failed.');
+    }
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = getAudioEl();
+    audio.src   = url;
+    speechState = 'speaking';
+    updateReadAloudButton();
+    await audio.play();
+  } catch (err) {
+    showTranslateStatus(err.message || 'Could not generate audio right now — try again shortly.');
+    speechState = 'idle';
+    updateReadAloudButton();
+  }
+}
+
+function speakNextChunk(voice, langCode) {
+  if (speechChunkIndex >= speechChunks.length) {
+    speechState = 'idle';
+    updateReadAloudButton();
+    return;
+  }
+  const utter = new SpeechSynthesisUtterance(speechChunks[speechChunkIndex]);
+  utter.lang = langCode;
+  if (voice) utter.voice = voice;
+  utter.rate = 0.95;
+  utter.onend = () => {
+    speechChunkIndex++;
+    if (speechState === 'speaking') speakNextChunk(voice, langCode);
+  };
+  utter.onerror = () => {
+    speechChunkIndex++;
+    if (speechState === 'speaking') speakNextChunk(voice, langCode);
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+function pauseReading() {
+  if (currentLang === 'en') window.speechSynthesis.pause();
+  else if (ttsAudioEl)      ttsAudioEl.pause();
+  speechState = 'paused';
+  updateReadAloudButton();
+}
+
+function resumeReading() {
+  if (currentLang === 'en') window.speechSynthesis.resume();
+  else if (ttsAudioEl)      ttsAudioEl.play();
+  speechState = 'speaking';
+  updateReadAloudButton();
+}
+
+function stopReading() {
+  window.speechSynthesis.cancel();
+  if (ttsAudioEl) { ttsAudioEl.pause(); ttsAudioEl.removeAttribute('src'); }
+  speechState = 'idle';
+  speechChunkIndex = 0;
+  updateReadAloudButton();
+}
+
+function updateReadAloudButton() {
+  const btn = document.getElementById('readAloudBtn');
+  const stopBtn = document.getElementById('stopReadingBtn');
+  if (!btn) return;
+  const ui = UI_STRINGS[currentLang] || UI_STRINGS.en;
+  if (speechState === 'loading') btn.innerHTML = `⏳ ${ui.generatingAudio || 'Generating…'}`;
+  else if (speechState === 'speaking') btn.innerHTML = `⏸ ${ui.pause}`;
+  else if (speechState === 'paused') btn.innerHTML = `▶ ${ui.resume}`;
+  else btn.innerHTML = `🔊 ${ui.readAloud}`;
+  if (stopBtn) stopBtn.style.display = speechState === 'idle' ? 'none' : 'inline-flex';
+}
+
+
 // ============================================================
 function updateLangButtons() {
   document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -890,8 +1394,12 @@ function renderSermon(s, timeMins, model, lang) {
     <div class="action-bar">
       <button class="action-btn primary" onclick="printSermon()">🖨 ${ui.print}</button>
       <button class="action-btn ghost"   onclick="copyAll(event)">⎘ ${ui.copy}</button>
+      <button class="action-btn ghost"   id="readAloudBtn" onclick="toggleReadAloud()">🔊 ${ui.readAloud}</button>
+      <button class="action-btn ghost"   id="stopReadingBtn" onclick="stopReading()" style="display:none">⏹ ${ui.stopReading}</button>
       <button class="action-btn ghost"   onclick="newSermon()">✦ ${ui.newSermon}</button>
     </div>`;
+
+  stopReading(); // switching/re-rendering a sermon shouldn't leave stale audio queued
 
   out.classList.add('visible');
   out.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1011,6 +1519,7 @@ function setLoading(on) {
 function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = msg; el.classList.add('visible'); }
 function hideError() { document.getElementById('errorMsg').classList.remove('visible'); }
 function newSermon() {
+  stopReading();
   document.getElementById('sermonOutput').classList.remove('visible');
   document.getElementById('sermonOutput').innerHTML = '';
   document.getElementById('formCard').style.display = 'block';

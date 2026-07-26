@@ -1,7 +1,13 @@
 // ============================================================
 //  The Pulpit - Sermon Helper AI
-//  Netlify Function: generate-sermon.js | Version 6.1
-//  (6.1: tightened per-attempt timeout + overall deadline so the function
+//  Netlify Function: generate-sermon.js | Version 6.3
+//  (6.3: Azure AI Translator is now the primary translation engine —
+//  real NMT, no hallucination risk — with the LLM-based approach kept
+//  only as a fallback for when AZURE_TRANSLATOR_KEY isn't set.
+//  6.2: swapped the Yoruba/Hausa/Igbo verse safety-net from the
+//  wldeh/bible-api GitHub dataset — confirmed NOT to carry these
+//  languages — to API.Bible, which needs a free BIBLE_API_KEY.
+//  6.1: tightened per-attempt timeout + overall deadline so the function
 //  always returns before Netlify's own 26s hard timeout kills it — see
 //  FUNCTION_BUDGET_MS below)
 //
@@ -58,62 +64,77 @@ const OPENROUTER_MODELS = [
 ];
 
 // -----------------------------------------------------------
-//  MULTI-LANGUAGE BIBLE VERSES (wldeh/bible-api via jsDelivr CDN,
-//  free + unlimited, no API key). Used to fetch REAL verse text in
+//  MULTI-LANGUAGE BIBLE VERSES via API.Bible (scripture.api.bible,
+//  run by American Bible Society). Used to fetch REAL verse text in
 //  the target language after translation, instead of trusting the
 //  LLM to translate Scripture accurately.
+//
+//  Needs a free API key: sign up at https://scripture.api.bible,
+//  create an app, and set BIBLE_API_KEY in Netlify env vars. Without
+//  it, this lookup is skipped entirely and the AI's own translated
+//  verse text is left in place (same graceful-degradation pattern as
+//  everywhere else in this file).
+//
+//  The wldeh/bible-api free GitHub dataset used previously turned out
+//  not to carry Yoruba/Hausa/Igbo at all (confirmed via 404), so it's
+//  been replaced here.
+//
+//  IMPORTANT: the bibleId values below are the "Open ... Contemporary
+//  Bible" editions as referenced by a third-party integration example
+//  (not Anthropic- or user-verified against the live API.Bible
+//  catalog). Once you have your API key, confirm/refresh these by
+//  calling GET https://api.scripture.api.bible/v1/bibles with your
+//  api-key header and filtering the response for language codes
+//  "yor", "hau", "ibo" — update the IDs below if they've changed.
 // -----------------------------------------------------------
-const WLDEH_BASE = "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles";
+const BIBLE_API_BASE_URL = "https://api.scripture.api.bible/v1";
 
-const BIBLE_VERSION_BY_LANG = {
-  yo: "yo-oycb", // Biblica Open Yoruba Contemporary Bible 2017
-  ha: "ha-bsrk", // Biblica Open Hausa Contemporary Bible 2020
-  ig: "ig-biuo", // Biblica Open Igbo Contemporary Bible 2020
+const BIBLE_ID_BY_LANG = {
+  yo: "b8d1feac6e94bd74-01", // Open Yoruba Contemporary Bible 2020 — VERIFY
+  ha: "0ab0c764d56a715d-01", // Open Hausa Contemporary Bible 2020 — VERIFY
+  ig: "a36fc06b086699f1-02", // Open Igbo Contemporary Bible 2020 — VERIFY
 };
 
 const LANGUAGE_LABELS = { yo: "Yoruba", ha: "Hausa", ig: "Igbo" };
 
-// Book-name -> wldeh URL slug. NOTE: confirmed against the API's own
-// README example ("genesis", "john"); numbered/multi-word book slugs
-// (e.g. "1corinthians", "songofsolomon") are the standard convention
-// for this dataset but haven't been individually verified against
-// every version — if a specific reference 404s, enrichVersesForLanguage
-// just leaves the AI's translated text in place rather than failing.
-const BOOK_SLUGS = {
-  "genesis": "genesis", "exodus": "exodus", "leviticus": "leviticus",
-  "numbers": "numbers", "deuteronomy": "deuteronomy", "joshua": "joshua",
-  "judges": "judges", "ruth": "ruth", "1 samuel": "1samuel",
-  "2 samuel": "2samuel", "1 kings": "1kings", "2 kings": "2kings",
-  "1 chronicles": "1chronicles", "2 chronicles": "2chronicles",
-  "ezra": "ezra", "nehemiah": "nehemiah", "esther": "esther", "job": "job",
-  "psalm": "psalms", "psalms": "psalms", "proverbs": "proverbs",
-  "ecclesiastes": "ecclesiastes", "song of solomon": "songofsolomon",
-  "song of songs": "songofsolomon", "isaiah": "isaiah", "jeremiah": "jeremiah",
-  "lamentations": "lamentations", "ezekiel": "ezekiel", "daniel": "daniel",
-  "hosea": "hosea", "joel": "joel", "amos": "amos", "obadiah": "obadiah",
-  "jonah": "jonah", "micah": "micah", "nahum": "nahum",
-  "habakkuk": "habakkuk", "zephaniah": "zephaniah", "haggai": "haggai",
-  "zechariah": "zechariah", "malachi": "malachi", "matthew": "matthew",
-  "mark": "mark", "luke": "luke", "john": "john", "acts": "acts",
-  "romans": "romans", "1 corinthians": "1corinthians",
-  "2 corinthians": "2corinthians", "galatians": "galatians",
-  "ephesians": "ephesians", "philippians": "philippians",
-  "colossians": "colossians", "1 thessalonians": "1thessalonians",
-  "2 thessalonians": "2thessalonians", "1 timothy": "1timothy",
-  "2 timothy": "2timothy", "titus": "titus", "philemon": "philemon",
-  "hebrews": "hebrews", "james": "james", "1 peter": "1peter",
-  "2 peter": "2peter", "1 john": "1john", "2 john": "2john",
-  "3 john": "3john", "jude": "jude", "revelation": "revelation",
+// Book-name -> USFM 3-letter code, the format API.Bible's verseId uses
+// (e.g. "HEB.13.4"). Standard USFM codes per the Unified Standard
+// Format Markers spec.
+const BOOK_USFM_CODES = {
+  "genesis": "GEN", "exodus": "EXO", "leviticus": "LEV",
+  "numbers": "NUM", "deuteronomy": "DEU", "joshua": "JOS",
+  "judges": "JDG", "ruth": "RUT", "1 samuel": "1SA",
+  "2 samuel": "2SA", "1 kings": "1KI", "2 kings": "2KI",
+  "1 chronicles": "1CH", "2 chronicles": "2CH",
+  "ezra": "EZR", "nehemiah": "NEH", "esther": "EST", "job": "JOB",
+  "psalm": "PSA", "psalms": "PSA", "proverbs": "PRO",
+  "ecclesiastes": "ECC", "song of solomon": "SNG",
+  "song of songs": "SNG", "isaiah": "ISA", "jeremiah": "JER",
+  "lamentations": "LAM", "ezekiel": "EZK", "daniel": "DAN",
+  "hosea": "HOS", "joel": "JOL", "amos": "AMO", "obadiah": "OBA",
+  "jonah": "JON", "micah": "MIC", "nahum": "NAM",
+  "habakkuk": "HAB", "zephaniah": "ZEP", "haggai": "HAG",
+  "zechariah": "ZEC", "malachi": "MAL", "matthew": "MAT",
+  "mark": "MRK", "luke": "LUK", "john": "JHN", "acts": "ACT",
+  "romans": "ROM", "1 corinthians": "1CO",
+  "2 corinthians": "2CO", "galatians": "GAL",
+  "ephesians": "EPH", "philippians": "PHP",
+  "colossians": "COL", "1 thessalonians": "1TH",
+  "2 thessalonians": "2TH", "1 timothy": "1TI",
+  "2 timothy": "2TI", "titus": "TIT", "philemon": "PHM",
+  "hebrews": "HEB", "james": "JAS", "1 peter": "1PE",
+  "2 peter": "2PE", "1 john": "1JN", "2 john": "2JN",
+  "3 john": "3JN", "jude": "JUD", "revelation": "REV",
 };
 
 // ============================================================
 //  BUILD PROVIDER LIST from available env keys
 // ============================================================
-function buildProviders(groqKey, openrouterKey) {
+function buildProviders(groqKey, openrouterKey, groqModels = GROQ_MODELS, openrouterModels = OPENROUTER_MODELS) {
   const list = [];
 
   if (groqKey) {
-    for (const model of GROQ_MODELS) {
+    for (const model of groqModels) {
       list.push({
         name:     `groq/${model}`,
         endpoint: GROQ_ENDPOINT,
@@ -125,7 +146,7 @@ function buildProviders(groqKey, openrouterKey) {
   }
 
   if (openrouterKey) {
-    for (const model of OPENROUTER_MODELS) {
+    for (const model of openrouterModels) {
       list.push({
         name:     `openrouter/${model}`,
         endpoint: OPENROUTER_ENDPOINT,
@@ -138,6 +159,26 @@ function buildProviders(groqKey, openrouterKey) {
 
   return list;
 }
+
+// -----------------------------------------------------------
+//  TRANSLATION-ONLY MODEL LISTS — low-resource languages like
+//  Yoruba, Hausa, and Igbo need the largest available model to get
+//  fluent, correct output. Small/fast models (llama-3.1-8b-instant,
+//  llama-3.2-3b) tend to garble words or drift into English mid-
+//  sentence for these languages, so they're excluded here even
+//  though they're fine (and fast) for English sermon generation.
+// -----------------------------------------------------------
+const TRANSLATION_GROQ_MODELS = [
+  "llama-3.3-70b-versatile",
+  "qwen-qwq-32b",
+  "mistral-saba-24b", // decent multilingual support, kept as fallback
+];
+
+const TRANSLATION_OPENROUTER_MODELS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
+  "openrouter/free",
+];
 
 // ============================================================
 //  LOGGING
@@ -208,24 +249,36 @@ function parseReference(reference) {
 }
 
 async function fetchVerseInLanguage(reference, lang) {
-  const version = BIBLE_VERSION_BY_LANG[lang];
-  if (!version) return null;
+  const apiKey = process.env.BIBLE_API_KEY;
+  if (!apiKey) return null; // no key configured — caller falls back to AI's own translation
+
+  const bibleId = BIBLE_ID_BY_LANG[lang];
+  if (!bibleId) return null;
+
   const parsed = parseReference(reference);
   if (!parsed) return null;
-  const slug = BOOK_SLUGS[parsed.book.toLowerCase()];
-  if (!slug) {
-    log.warn("No book slug mapping", { book: parsed.book });
+
+  const usfmBook = BOOK_USFM_CODES[parsed.book.toLowerCase()];
+  if (!usfmBook) {
+    log.warn("No USFM book code mapping", { book: parsed.book });
     return null;
   }
+
   try {
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 5000);
-    const url   = `${WLDEH_BASE}/${version}/books/${slug}/chapters/${parsed.chapter}/verses/${parsed.verse}.json`;
-    const res   = await fetch(url, { signal: ctrl.signal });
+    const verseId = `${usfmBook}.${parsed.chapter}.${parsed.verse}`;
+    const url = `${BIBLE_API_BASE_URL}/bibles/${bibleId}/verses/${verseId}` +
+      `?content-type=text&include-verse-numbers=false&include-chapter-numbers=false&include-notes=false`;
+    const res = await fetch(url, { signal: ctrl.signal, headers: { "api-key": apiKey } });
     clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      log.warn("API.Bible lookup failed", { status: res.status, verseId, lang });
+      return null;
+    }
     const d = await res.json();
-    if (d?.text) return { text: d.text.replace(/\n/g, " ").trim() };
+    const text = d?.data?.content;
+    if (text) return { text: text.replace(/\n/g, " ").trim() };
     return null;
   } catch { return null; }
 }
@@ -401,6 +454,10 @@ Rules:
 - Do NOT translate any "reference" field (e.g. "John 3:16") — copy those exactly as given, unchanged
 - Translate all other string values naturally and fluently: titles, hooks, exposition, illustrations, applications, prayers, notes, everything else
 - Numbers (like estimated_minutes) stay as numbers, unchanged
+- Use natural, everyday ${langLabel} as spoken/preached in church — the register a real pastor uses from the pulpit, not a stiff literal word-for-word rendering
+- Do NOT mix in English words or phrases unless a term has no ${langLabel} equivalent at all (e.g. a proper name) — do not code-switch mid-sentence
+- Do NOT invent or guess unfamiliar ${langLabel} words — prefer a common, widely understood word or short phrase over a rare or made-up one
+- If a theological term has a standard, well-known ${langLabel} rendering used in churches, use that standard rendering rather than a literal translation
 
 Sermon JSON to translate:
 ${JSON.stringify(sermon)}`;
@@ -414,7 +471,7 @@ ${JSON.stringify(sermon)}`;
 // ============================================================
 //  API CALL WITH RETRY
 // ============================================================
-async function callProvider(provider, messages, attempt = 1) {
+async function callProvider(provider, messages, attempt = 1, temperature = 0.8) {
   const t0    = Date.now();
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -438,7 +495,7 @@ async function callProvider(provider, messages, attempt = 1) {
       body: JSON.stringify({
         model:       provider.model,
         max_tokens:  4000,
-        temperature: 0.8,
+        temperature,
         messages,
         // No response_format — breaks many free models on both providers
       }),
@@ -458,7 +515,7 @@ async function callProvider(provider, messages, attempt = 1) {
       if (attempt <= MAX_RETRIES) {
         log.warn("Retrying", { provider: provider.name, status: res.status, attempt });
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
-        return callProvider(provider, messages, attempt + 1);
+        return callProvider(provider, messages, attempt + 1, temperature);
       }
       const t = await res.text().catch(() => "");
       throw new Error(`HTTP ${res.status} after ${MAX_RETRIES} retries: ${t.slice(0, 150)}`);
@@ -505,6 +562,110 @@ const respond = (status, body) => ({
 // ============================================================
 //  TRANSLATION HANDLER
 // ============================================================
+// -----------------------------------------------------------
+//  AZURE AI TRANSLATOR — real NMT, used as the PRIMARY translation
+//  path when configured (no hallucination risk, unlike the LLM
+//  fallback below). Needs AZURE_TRANSLATOR_KEY + AZURE_TRANSLATOR_REGION
+//  env vars (free F0 tier: 2M characters/month). Falls through to the
+//  LLM-based translation further down if these aren't set, or if the
+//  Azure call itself fails.
+// -----------------------------------------------------------
+const AZURE_TRANSLATOR_ENDPOINT = "https://api.cognitive.microsofttranslator.com";
+
+// Walks the sermon object and collects every translatable string field
+// paired with a setter, so results can be written back onto a clone in
+// place. Deliberately explicit (not a generic deep-walker) so "reference"
+// fields and numeric fields (estimated_minutes) never get sent for
+// translation by accident.
+function collectTranslatableFields(sermon) {
+  const items = [];
+  const add = (obj, key) => {
+    if (obj && typeof obj[key] === "string" && obj[key].trim()) {
+      items.push({ text: obj[key], set: (t) => { obj[key] = t; } });
+    }
+  };
+
+  add(sermon, "title");
+  if (sermon.theme_verse) add(sermon.theme_verse, "text");
+
+  const intro = sermon.introduction || {};
+  add(intro, "hook"); add(intro, "problem_statement"); add(intro, "thesis");
+
+  const bg = sermon.background_context || {};
+  add(bg, "historical"); add(bg, "why_it_matters_today");
+
+  (sermon.main_points || []).forEach(pt => {
+    add(pt, "title"); add(pt, "exposition"); add(pt, "illustration"); add(pt, "application");
+    if (pt.scripture) add(pt.scripture, "text");
+  });
+
+  (sermon.supporting_verses || []).forEach(v => add(v, "text"));
+
+  const c = sermon.conclusion || {};
+  add(c, "summary"); add(c, "call_to_action"); add(c, "closing_illustration");
+
+  add(sermon, "altar_call");
+  add(sermon, "closing_prayer");
+
+  (sermon.preacher_notes || []).forEach((note, idx) => {
+    if (typeof note === "string" && note.trim()) {
+      items.push({ text: note, set: (t) => { sermon.preacher_notes[idx] = t; } });
+    }
+  });
+
+  return items;
+}
+
+// Returns a translated clone of the sermon, or null if Azure isn't
+// configured (caller should fall back to the LLM path in that case).
+// Throws on an actual API failure so the caller can distinguish
+// "not configured" (silent fallback) from "configured but broken"
+// (also falls back, but logs a warning).
+async function translateWithAzure(sermon, targetLangCode) {
+  const key    = process.env.AZURE_TRANSLATOR_KEY;
+  const region = process.env.AZURE_TRANSLATOR_REGION;
+  if (!key || !region) return null;
+
+  const clone = JSON.parse(JSON.stringify(sermon));
+  const items = collectTranslatableFields(clone);
+  if (!items.length) return clone;
+
+  // Azure limits: 100 array elements / 50,000 chars per request. A sermon
+  // fits comfortably in one batch, but chunk defensively just in case.
+  const BATCH_SIZE = 90;
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const url = `${AZURE_TRANSLATOR_ENDPOINT}/translate?api-version=3.0&from=en&to=${targetLangCode}`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: {
+        "Ocp-Apim-Subscription-Key":    key,
+        "Ocp-Apim-Subscription-Region": region,
+        "Content-Type":                 "application/json",
+      },
+      body: JSON.stringify(batch.map(b => ({ Text: b.text }))),
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`Azure Translator HTTP ${res.status}: ${t.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    data.forEach((entry, idx) => {
+      const translated = entry?.translations?.[0]?.text;
+      if (translated) batch[idx].set(translated);
+    });
+  }
+
+  return clone;
+}
+
 async function handleTranslate(body, groqKey, openrouterKey) {
   const targetLang = (body.targetLang || "").trim();
   const sermon      = body.sermon;
@@ -516,11 +677,28 @@ async function handleTranslate(body, groqKey, openrouterKey) {
     return respond(400, { error: "A sermon object is required for translation." });
   }
 
-  const providers = buildProviders(groqKey, openrouterKey);
+  // Preferred path: Azure AI Translator (real NMT, no hallucination
+  // risk). Falls through to the LLM-based translation below only if
+  // Azure isn't configured, or the call itself fails.
+  try {
+    const azureResult = await translateWithAzure(sermon, targetLang);
+    if (azureResult) {
+      const enriched = await enrichVersesForLanguage(azureResult, targetLang);
+      log.info("Translation complete (Azure)", { targetLang });
+      return respond(200, { sermon: enriched, model: "azure-translator" });
+    }
+  } catch (err) {
+    log.warn("Azure translation failed, falling back to LLM", { error: err.message });
+  }
+
+  // Fallback: LLM-based translation. Only reached if AZURE_TRANSLATOR_KEY/
+  // AZURE_TRANSLATOR_REGION aren't set, or the Azure call above failed.
+  const providers = buildProviders(groqKey, openrouterKey, TRANSLATION_GROQ_MODELS, TRANSLATION_OPENROUTER_MODELS);
   const messages   = buildTranslationMessages(sermon, LANGUAGE_LABELS[targetLang]);
   let   lastError  = null;
   const deadline   = Date.now() + FUNCTION_BUDGET_MS;
   const perAttemptBuffer = TIMEOUT_MS + 500;
+  const TRANSLATION_TEMPERATURE = 0.2; // low — fidelity matters far more than creativity here
 
   for (const provider of providers) {
     if (Date.now() + perAttemptBuffer > deadline) {
@@ -530,7 +708,7 @@ async function handleTranslate(body, groqKey, openrouterKey) {
     }
     log.info("Trying provider (translation)", { provider: provider.name, targetLang });
     try {
-      const raw    = await callProvider(provider, messages);
+      const raw    = await callProvider(provider, messages, 1, TRANSLATION_TEMPERATURE);
       const parsed = parseJSON(raw);
 
       if (!parsed || !validate(parsed)) {
