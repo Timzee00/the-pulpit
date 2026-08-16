@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Pulpit — Sermon Helper AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Cinzel:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     The Pulpit — Complete Stylesheet
+     ============================================================ */
+  :root {
+    --gold: #C9A84C; --gold-light: #E8C97A; --gold-dark: #8B6914;
+    --deep: #0D0A05; --ink: #1A1409; --parchment: #F5EDD6;
+    --parchment-dark: #E8D8B0; --wine: #6B1A2A; --wine-light: #8B2233;
+    --muted: #7A6840; --accent-blue: #1A3A5C; --radius: 4px;
+    --sidebar-w: 300px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background-color: var(--deep); font-family: 'Lato', sans-serif; color: var(--parchment); min-height: 100vh; overflow-x: hidden; }
+
+  .bg-layer {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(107,26,42,0.12) 0%, transparent 60%),
+                linear-gradient(160deg, #0D0A05 0%, #12100A 40%, #0D0A05 100%);
+  }
+  .grain { position: fixed; inset: 0; opacity: 0.03; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E"); background-size: 200px; z-index: 1; pointer-events: none; }
+
+  /* === LANGUAGE BAR === */
+  .lang-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    background: rgba(13,10,5,0.92);
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 8px 70px;
+    flex-wrap: wrap;
+  }
+  .lang-bar-label {
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.25em; color: var(--muted); text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .lang-btn {
+    padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(201,168,76,0.2);
+    background: transparent; color: var(--muted); font-size: 11px;
+    font-family: 'Cinzel', serif; letter-spacing: 0.1em;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .lang-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+  .lang-btn.active {
+    background: rgba(201,168,76,0.12); border-color: var(--gold);
+    color: var(--gold-light);
+  }
+  .lang-translate-status {
+    font-size: 10px; color: rgba(201,168,76,0.4);
+    font-family: 'Lato', sans-serif; margin-left: 8px;
+    display: none;
+  }
+  .lang-translate-status.visible { display: inline; }
+
+  /* === SIDEBAR === */
+  .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 99; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .sidebar-overlay.show { opacity: 1; pointer-events: all; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+    background: linear-gradient(180deg, #110E06 0%, #0D0A05 100%);
+    border-right: 1px solid rgba(201,168,76,0.15);
+    z-index: 100; transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid rgba(201,168,76,0.1); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .sidebar-title { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; }
+  .sidebar-close { width: 30px; height: 30px; background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.15); border-radius: 50%; color: var(--muted); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .sidebar-close:hover { color: var(--gold); border-color: var(--gold); }
+  .sidebar-search { padding: 12px 16px; border-bottom: 1px solid rgba(201,168,76,0.08); flex-shrink: 0; }
+  .sidebar-search input { width: 100%; background: rgba(201,168,76,0.04); border: 1px solid rgba(201,168,76,0.15); border-radius: 20px; padding: 8px 14px; font-size: 13px; color: var(--parchment); font-family: 'Lato', sans-serif; outline: none; }
+  .sidebar-search input::placeholder { color: rgba(201,168,76,0.25); }
+  .sidebar-search input:focus { border-color: rgba(201,168,76,0.35); }
+  .sidebar-count { padding: 8px 16px 4px; font-size: 10px; letter-spacing: 0.15em; color: rgba(201,168,76,0.3); font-family: 'Cinzel', serif; flex-shrink: 0; }
+  .sidebar-list { flex: 1; overflow-y: auto; padding: 4px 0 16px; }
+  .sidebar-list::-webkit-scrollbar { width: 4px; }
+  .sidebar-list::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.15); border-radius: 2px; }
+  .history-item { padding: 14px 16px; border-bottom: 1px solid rgba(201,168,76,0.06); cursor: pointer; transition: background 0.15s; position: relative; }
+  .history-item:hover { background: rgba(201,168,76,0.05); }
+  .history-item.active { background: rgba(201,168,76,0.08); border-left: 2px solid var(--gold); }
+  .history-title { font-family: 'Cormorant Garamond', serif; font-size: 15px; color: var(--parchment); line-height: 1.4; margin-bottom: 5px; padding-right: 24px; }
+  .history-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .history-date { font-size: 10px; color: rgba(201,168,76,0.3); }
+  .history-tone { font-size: 10px; color: var(--muted); background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.12); border-radius: 10px; padding: 1px 7px; }
+  .history-delete { position: absolute; top: 12px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: transparent; border: none; color: rgba(201,168,76,0.2); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; opacity: 0; }
+  .history-item:hover .history-delete { opacity: 1; }
+  .history-delete:hover { color: #D4808F; background: rgba(107,26,42,0.2); }
+  .sidebar-empty { padding: 40px 20px; text-align: center; display: none; }
+  .sidebar-empty.show { display: block; }
+  .sidebar-empty p { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; color: rgba(201,168,76,0.25); line-height: 1.7; }
+  .sidebar-clear-btn { margin: 0 16px 16px; padding: 8px; background: transparent; border: 1px solid rgba(107,26,42,0.3); border-radius: var(--radius); color: rgba(212,128,143,0.5); font-size: 11px; font-family: 'Cinzel', serif; letter-spacing: 0.1em; cursor: pointer; width: calc(100% - 32px); transition: all 0.2s; flex-shrink: 0; }
+  .sidebar-clear-btn:hover { border-color: var(--wine-light); color: #D4808F; }
+
+  /* === HAMBURGER === */
+  .hamburger { position: fixed; top: 18px; left: 18px; z-index: 300; width: 44px; height: 44px; background: rgba(13,10,5,0.85); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; backdrop-filter: blur(8px); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; transition: border-color 0.2s; }
+  .hamburger:hover { border-color: var(--gold); }
+  .hamburger span { display: block; width: 18px; height: 1.5px; background: var(--gold); border-radius: 2px; transition: all 0.25s; }
+  .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+  .history-badge { position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; background: var(--wine-light); border-radius: 50%; font-size: 9px; font-family: 'Cinzel', serif; color: var(--parchment); display: none; align-items: center; justify-content: center; }
+  .history-badge.show { display: flex; }
+
+  /* === HEADER === */
+  header { position: relative; z-index: 10; text-align: center; padding: 88px 24px 32px; border-bottom: 1px solid rgba(201,168,76,0.15); }
+  .cross-svg { width: 40px; height: 48px; fill: none; stroke: var(--gold); stroke-width: 2.5; filter: drop-shadow(0 0 12px rgba(201,168,76,0.4)); margin-bottom: 16px; }
+  .header-title { font-family: 'Cinzel', serif; font-size: clamp(28px,5vw,52px); font-weight: 700; letter-spacing: 0.15em; color: var(--gold-light); text-shadow: 0 0 40px rgba(201,168,76,0.3); margin-bottom: 8px; }
+  .header-sub { font-family: 'Cormorant Garamond', serif; font-size: clamp(14px,2vw,18px); font-style: italic; color: var(--muted); letter-spacing: 0.08em; }
+  .divider-ornament { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 16px auto 0; max-width: 300px; }
+  .divider-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent); }
+  .divider-diamond { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); flex-shrink: 0; }
+
+  /* === MAIN === */
+  main { position: relative; z-index: 10; max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* === FORM === */
+  .form-card { background: linear-gradient(135deg, rgba(26,20,9,0.95) 0%, rgba(20,15,5,0.98) 100%); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 36px; margin-bottom: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.1); animation: fadeUp 0.6s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .section-label { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: rgba(201,168,76,0.2); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .form-card { padding: 24px 18px; } }
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+
+  /* === MODE TABS === */
+  .mode-tabs { display: flex; justify-content: center; gap: 4px; margin-top: 20px; }
+  .mode-tab { background: transparent; border: 1px solid rgba(201,168,76,0.25); color: var(--muted); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; padding: 10px 20px; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; }
+  .mode-tab:hover { color: var(--gold-light); border-color: rgba(201,168,76,0.5); }
+  .mode-tab.active { background: rgba(201,168,76,0.12); color: var(--gold); border-color: var(--gold); }
+
+  /* === BIBLE STUDY === */
+  .bible-lookup-row { display: flex; gap: 10px; margin-bottom: 18px; }
+  .bible-lookup-row input { flex: 1; }
+  .bible-browse-row { display: grid; grid-template-columns: 1.5fr 1fr 1.3fr; gap: 10px; }
+  @media (max-width: 600px) { .bible-browse-row { grid-template-columns: 1fr; } .bible-lookup-row { flex-direction: column; } }
+  .bible-passage-status { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--muted); font-size: 14px; margin-top: 14px; min-height: 18px; }
+  .bible-passage-card { background: linear-gradient(135deg, rgba(26,20,9,0.95) 0%, rgba(20,15,5,0.98) 100%); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; padding: 36px; margin-bottom: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: fadeUp 0.4s ease both; }
+  .bible-passage-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 22px; margin-bottom: 18px; letter-spacing: 0.02em; }
+  .bible-passage-text { font-family: 'Cormorant Garamond', serif; font-size: 19px; line-height: 1.85; color: var(--parchment); }
+  .bible-verse-num { color: var(--gold); font-family: 'Cinzel', serif; font-size: 12px; vertical-align: super; margin-right: 4px; opacity: 0.85; }
+  .bible-notes-section { margin-top: 32px; padding-top: 28px; border-top: 1px solid rgba(201,168,76,0.15); }
+  #bibleNotesArea { min-height: 120px; resize: vertical; font-size: 16px; line-height: 1.6; }
+  .bible-notes-status { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--muted); font-size: 13px; margin-top: 8px; height: 16px; }
+  .bible-notes-list-card { background: rgba(26,20,9,0.5); border: 1px solid rgba(201,168,76,0.12); border-radius: 8px; padding: 28px; }
+  .bible-notes-list { display: flex; flex-direction: column; gap: 10px; }
+  .bible-notes-empty { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--muted); font-size: 15px; }
+  .bible-note-item { background: rgba(201,168,76,0.05); border: 1px solid rgba(201,168,76,0.15); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: border-color 0.2s; }
+  .bible-note-item:hover { border-color: rgba(201,168,76,0.4); }
+  .bible-note-item-ref { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .bible-note-item-snippet { font-family: 'Cormorant Garamond', serif; color: var(--parchment); font-size: 15px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bible-note-item-del { float: right; background: none; border: none; color: var(--wine-light); cursor: pointer; font-size: 13px; opacity: 0.6; }
+  .bible-note-item-del:hover { opacity: 1; }
+
+  .form-group.full-width { grid-column: 1 / -1; }
+  label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+  input, select, textarea { background: rgba(201,168,76,0.04); border: 1px solid rgba(201,168,76,0.18); border-radius: var(--radius); color: var(--parchment); font-family: 'Cormorant Garamond', serif; font-size: 16px; padding: 12px 16px; transition: border-color 0.2s, box-shadow 0.2s; outline: none; width: 100%; }
+  input::placeholder, textarea::placeholder { color: rgba(201,168,76,0.25); font-style: italic; }
+  input:focus, select:focus, textarea:focus { border-color: rgba(201,168,76,0.5); background: rgba(201,168,76,0.07); box-shadow: 0 0 0 3px rgba(201,168,76,0.06); }
+  select option { background: var(--ink); color: var(--parchment); }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  .tone-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tone-chip { padding: 6px 14px; border: 1px solid rgba(201,168,76,0.2); border-radius: 20px; font-size: 12px; font-family: 'Lato', sans-serif; color: var(--muted); cursor: pointer; transition: all 0.2s; background: transparent; }
+  .tone-chip:hover { border-color: var(--gold); color: var(--gold-light); }
+  .tone-chip.active { background: rgba(201,168,76,0.12); border-color: var(--gold); color: var(--gold-light); }
+  .time-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .time-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .toggle-switch { width: 40px; height: 22px; background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.2); border-radius: 11px; position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background: var(--muted); border-radius: 50%; top: 2px; left: 2px; transition: all 0.2s; }
+  .toggle-switch.on { background: rgba(201,168,76,0.2); border-color: var(--gold); }
+  .toggle-switch.on::after { left: 20px; background: var(--gold); }
+  .toggle-label { font-size: 13px; color: var(--muted); font-family: 'Lato', sans-serif; }
+  .time-input-wrap { display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .time-input-wrap.visible { opacity: 1; pointer-events: all; }
+  .time-unit { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; }
+  .suggest-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .suggest-btn { display: flex; align-items: center; gap: 8px; padding: 10px 18px; background: rgba(107,26,42,0.15); border: 1px solid rgba(107,26,42,0.4); border-radius: var(--radius); color: #D4808F; font-size: 13px; font-family: 'Lato', sans-serif; cursor: pointer; transition: all 0.2s; }
+  .suggest-btn:hover { background: rgba(107,26,42,0.3); border-color: var(--wine-light); color: #F0A0AF; }
+  .generate-btn { width: 100%; padding: 16px 24px; background: linear-gradient(135deg, #8B6914 0%, var(--gold) 50%, #C09030 100%); border: none; border-radius: var(--radius); font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600; letter-spacing: 0.2em; color: var(--deep); cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; text-transform: uppercase; }
+  .generate-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(201,168,76,0.3); }
+  .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .suggestions-box { display: none; background: rgba(13,10,5,0.9); border: 1px solid rgba(201,168,76,0.15); border-radius: var(--radius); margin-top: 8px; overflow: hidden; }
+  .suggestion-item { padding: 12px 16px; font-family: 'Cormorant Garamond', serif; font-size: 15px; cursor: pointer; border-bottom: 1px solid rgba(201,168,76,0.08); transition: background 0.15s; color: var(--parchment); }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: rgba(201,168,76,0.08); color: var(--gold-light); }
+  .suggestion-category { font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 0.15em; color: var(--muted); display: block; margin-top: 3px; }
+  .error-msg { display: none; background: rgba(107,26,42,0.15); border: 1px solid rgba(107,26,42,0.4); border-radius: var(--radius); padding: 14px 18px; font-size: 14px; color: #D4808F; margin-top: 12px; font-family: 'Lato', sans-serif; line-height: 1.5; }
+  .error-msg.visible { display: block; }
+
+  /* === LOADING === */
+  .loading-state { display: none; text-align: center; padding: 60px 24px; }
+  .loading-state.visible { display: block; }
+  .loading-cross { width: 48px; height: 56px; margin: 0 auto 24px; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+  .loading-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: var(--muted); margin-bottom: 8px; }
+  .loading-verse { font-size: 13px; color: rgba(201,168,76,0.4); }
+  .progress-dots { display: flex; justify-content: center; gap: 6px; margin-top: 20px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: dotBlink 1.4s ease-in-out infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBlink { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+
+  /* === OUTPUT === */
+  .sermon-output { display: none; animation: fadeUp 0.6s ease both; }
+  .sermon-output.visible { display: block; }
+  .sermon-header-card { background: linear-gradient(135deg, rgba(107,26,42,0.2) 0%, rgba(26,20,9,0.95) 100%); border: 1px solid rgba(107,26,42,0.4); border-radius: 8px; padding: 36px; margin-bottom: 20px; text-align: center; position: relative; overflow: hidden; }
+  .sermon-header-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--wine-light), var(--gold), var(--wine-light), transparent); }
+  .sermon-title-out { font-family: 'Cinzel', serif; font-size: clamp(20px,4vw,36px); font-weight: 700; color: var(--gold-light); margin-bottom: 12px; line-height: 1.3; }
+  .sermon-meta { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
+  .meta-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; font-family: 'Lato', sans-serif; }
+  .lang-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(26,60,26,0.15); border: 1px solid rgba(26,60,26,0.3); border-radius: 10px; padding: 2px 8px; font-size: 10px; color: #7DC07D; font-family: 'Cinzel', serif; letter-spacing: 0.08em; margin-top: 8px; }
+  .sermon-section { background: rgba(26,20,9,0.9); border: 1px solid rgba(201,168,76,0.12); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: border-color 0.2s; }
+  .sermon-section:hover { border-color: rgba(201,168,76,0.25); }
+  .section-header { padding: 16px 24px; display: flex; align-items: center; gap: 14px; cursor: pointer; user-select: none; transition: background 0.2s; }
+  .section-header:hover { background: rgba(201,168,76,0.04); }
+  .section-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .icon-gold { background: rgba(201,168,76,0.12); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .icon-wine { background: rgba(107,26,42,0.2); color: #D4808F; border: 1px solid rgba(107,26,42,0.4); }
+  .icon-blue { background: rgba(26,58,92,0.2); color: #7BA7D0; border: 1px solid rgba(26,58,92,0.4); }
+  .icon-green { background: rgba(26,60,26,0.2); color: #7DC07D; border: 1px solid rgba(26,60,26,0.4); }
+  .section-title-wrap { flex: 1; }
+  .section-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 500; letter-spacing: 0.1em; color: var(--parchment); }
+  .section-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .section-toggle { color: var(--muted); font-size: 18px; transition: transform 0.2s; flex-shrink: 0; }
+  .section-toggle.open { transform: rotate(180deg); }
+  .section-body { padding: 0 24px; max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.2s; }
+  .section-body.open { max-height: 3000px; padding: 4px 24px 24px; }
+  .sermon-content { font-family: 'Cormorant Garamond', serif; font-size: 17px; line-height: 1.85; color: var(--parchment-dark); }
+  .sermon-content p { margin-bottom: 16px; }
+  .sermon-content p:last-child { margin-bottom: 0; }
+  .verse-card { background: rgba(201,168,76,0.06); border-left: 3px solid var(--gold); padding: 14px 18px; margin: 16px 0; border-radius: 0 4px 4px 0; }
+  .verse-ref { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); letter-spacing: 0.15em; margin-bottom: 6px; display: block; }
+  .verse-text { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: var(--parchment); line-height: 1.7; }
+  .sermon-point { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid rgba(201,168,76,0.08); }
+  .sermon-point:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .point-number { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold); font-weight: 600; margin-bottom: 6px; display: block; }
+  .point-title { font-family: 'Cinzel', serif; font-size: 15px; color: var(--gold-light); margin-bottom: 10px; }
+  .illustration-box { background: rgba(26,58,92,0.1); border: 1px solid rgba(26,58,92,0.25); border-radius: 4px; padding: 14px 18px; margin: 14px 0; }
+  .illustration-label { font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 0.2em; color: #7BA7D0; margin-bottom: 8px; display: block; }
+  .prayer-box { background: rgba(107,26,42,0.1); border: 1px solid rgba(107,26,42,0.25); border-radius: 4px; padding: 20px; font-style: italic; line-height: 1.8; }
+  .time-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--gold); font-family: 'Cinzel', serif; letter-spacing: 0.1em; margin-bottom: 14px; }
+  .action-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
+  .action-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius); font-size: 13px; font-family: 'Cinzel', serif; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; border: 1px solid; }
+  .action-btn.primary { background: linear-gradient(135deg, #8B6914, var(--gold)); border-color: var(--gold); color: var(--deep); font-weight: 600; }
+  .action-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201,168,76,0.25); }
+  .action-btn.ghost { background: transparent; border-color: rgba(201,168,76,0.2); color: var(--muted); }
+  .action-btn.ghost:hover { border-color: var(--gold); color: var(--gold-light); }
+
+  /* === TRANSLATION OVERLAY === */
+  .translating-overlay {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: rgba(13,10,5,0.85); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  .translating-overlay.visible { display: flex; }
+  .translating-overlay p { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: var(--muted); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--deep); }
+  ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 3px; }
+  footer { position: relative; z-index: 10; text-align: center; padding: 20px; border-top: 1px solid rgba(201,168,76,0.08); }
+  footer p { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 13px; color: rgba(201,168,76,0.25); }
+
+  @media (max-width: 500px) {
+    header { padding: 104px 16px 24px; }
+    .section-header { padding: 14px 16px; }
+    .section-body.open { padding: 4px 16px 20px; }
+    .sermon-header-card { padding: 24px 16px; }
+    .lang-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      min-height: 48px;
+      padding: 8px 12px 8px 76px;
+      justify-content: flex-start;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    .lang-bar-label { flex: 0 0 auto; }
+    .lang-btn { flex: 0 0 auto; }
+  }
+
+  .bible-copyright { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(201,168,76,0.12); font-size: 11px; line-height: 1.5; color: var(--muted); }
+
+  /* === PULPITPEDIA === */
+  .pedia-view { display:none; }
+  .pedia-hero { background: linear-gradient(135deg, rgba(26,20,9,0.97), rgba(31,20,10,0.92)); border:1px solid rgba(201,168,76,0.22); border-radius:8px; padding:34px; margin-bottom:24px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  .pedia-title { font-family:'Cinzel',serif; color:var(--gold-light); font-size:clamp(24px,4vw,38px); letter-spacing:.08em; margin-bottom:8px; }
+  .pedia-subtitle { color:var(--muted); font-family:'Cormorant Garamond',serif; font-size:18px; line-height:1.55; max-width:720px; }
+  .pedia-search { display:flex; gap:10px; margin-top:22px; }
+  .pedia-search input { flex:1; min-width:0; background:rgba(0,0,0,.24); border:1px solid rgba(201,168,76,.2); border-radius:var(--radius); padding:13px 15px; color:var(--parchment); outline:none; font-size:14px; }
+  .pedia-search input:focus { border-color:var(--gold); }
+  .pedia-filters { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .pedia-filter { background:transparent; border:1px solid rgba(201,168,76,.15); color:var(--muted); border-radius:18px; padding:6px 11px; font-size:10px; font-family:'Cinzel',serif; cursor:pointer; }
+  .pedia-filter.active,.pedia-filter:hover { color:var(--gold-light); border-color:var(--gold); background:rgba(201,168,76,.08); }
+  .pedia-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .pedia-card { background:rgba(26,20,9,.82); border:1px solid rgba(201,168,76,.13); border-radius:8px; padding:20px; cursor:pointer; transition:transform .18s,border-color .18s,background .18s; }
+  .pedia-card:hover { transform:translateY(-2px); border-color:rgba(201,168,76,.38); background:rgba(31,23,11,.95); }
+  .pedia-card-cat { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); font-family:'Cinzel',serif; margin-bottom:8px; }
+  .pedia-card h3 { font-family:'Cormorant Garamond',serif; color:var(--parchment); font-size:21px; margin-bottom:6px; }
+  .pedia-card p { color:var(--muted); font-size:12px; line-height:1.6; }
+  .pedia-results-meta { color:rgba(201,168,76,.45); font-size:10px; letter-spacing:.12em; font-family:'Cinzel',serif; margin:20px 0 10px; text-transform:uppercase; }
+  .pedia-empty { text-align:center; padding:36px 20px; border:1px dashed rgba(201,168,76,.15); border-radius:8px; color:var(--muted); line-height:1.7; }
+  .pedia-article { background:rgba(26,20,9,.9); border:1px solid rgba(201,168,76,.18); border-radius:8px; padding:28px; margin-top:18px; }
+  .pedia-article-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; border-bottom:1px solid rgba(201,168,76,.12); padding-bottom:18px; margin-bottom:20px; }
+  .pedia-article h2 { font-family:'Cinzel',serif; color:var(--gold-light); font-size:24px; margin-bottom:6px; }
+  .pedia-badge { display:inline-block; border:1px solid rgba(201,168,76,.22); color:var(--gold); border-radius:14px; padding:4px 9px; font-size:9px; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }
+  .pedia-article h3 { font-family:'Cinzel',serif; color:var(--gold); font-size:11px; letter-spacing:.15em; text-transform:uppercase; margin:22px 0 9px; }
+  .pedia-article p,.pedia-article li { color:var(--parchment-dark); font-family:'Cormorant Garamond',serif; font-size:17px; line-height:1.65; }
+  .pedia-article ul { padding-left:20px; }
+  .pedia-source { display:block; color:var(--gold-light); font-size:12px; margin-top:7px; text-decoration:none; word-break:break-word; }
+  .pedia-source:hover { text-decoration:underline; }
+  .pedia-note { background:rgba(201,168,76,.05); border-left:2px solid var(--gold); padding:12px 14px; margin-top:18px; color:var(--muted); font-size:12px; line-height:1.6; }
+  .pedia-disclaimer { margin-top:16px; color:rgba(201,168,76,.42); font-size:10px; line-height:1.6; }
+  .pedia-research { margin-top:18px; padding:18px; border:1px solid rgba(201,168,76,.16); border-radius:8px; background:rgba(201,168,76,.035); }
+  .pedia-research-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .pedia-research-title { font-family:'Cinzel',serif; color:var(--gold-light); font-size:13px; letter-spacing:.12em; text-transform:uppercase; }
+  .pedia-research-status { color:var(--muted); font-size:11px; }
+  .pedia-research-results { margin-top:14px; display:grid; gap:10px; }
+  .pedia-research-card { padding:14px; border:1px solid rgba(201,168,76,.12); border-radius:6px; background:rgba(0,0,0,.16); }
+  .pedia-research-card strong { color:var(--parchment); font-family:'Cormorant Garamond',serif; font-size:18px; }
+  .pedia-research-card p { color:var(--muted); font-size:12px; line-height:1.6; margin-top:5px; }
+  .pedia-evidence { display:inline-block; margin-top:8px; padding:3px 7px; border:1px solid rgba(201,168,76,.18); border-radius:12px; color:var(--gold); font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
+  .pedia-research-answer { margin-top:14px; padding:18px; border-left:2px solid var(--gold); background:rgba(201,168,76,.035); }
+  .pedia-research-answer h3 { margin-top:0; }
+  .pedia-source-meta { color:rgba(201,168,76,.5); font-size:10px; margin-top:8px; }
+  @media (max-width:650px) { .lang-bar{justify-content:flex-start; padding:7px 10px; overflow-x:auto; flex-wrap:nowrap; white-space:nowrap;} .lang-bar-label{position:sticky;left:0;background:rgba(13,10,5,.96);padding-right:8px;} .hamburger{top:58px;left:10px;z-index:1000;} header{padding-top:112px;} .pedia-grid{grid-template-columns:1fr;} .pedia-hero,.pedia-article{padding:20px;} .pedia-search{flex-direction:column;} .pedia-article-head{flex-direction:column;} }
+
+  @media print {
+    body { background: white !important; color: #1a1409 !important; }
+    .bg-layer, .grain, footer, .action-bar, .hamburger,
+    .sidebar, .sidebar-overlay, .lang-bar, .translating-overlay { display: none !important; }
+    .form-card { display: none !important; }
+    header { padding: 20px !important; }
+    .sermon-section { border: 1px solid #ccc !important; break-inside: avoid; }
+    .section-body { max-height: none !important; padding: 8px 20px 20px !important; }
+    .sermon-header-card { background: none !important; border: 2px solid #C9A84C !important; }
+    .sermon-title-out, .section-name { color: #1a1409 !important; }
+    .verse-card { background: #f9f5e8 !important; }
+    .prayer-box { background: #fdf8ee !important; }
+    .verse-text, .sermon-content { color: #2e2310 !important; }
+    * { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<div class="grain"></div>
+
+<!-- LANGUAGE BAR -->
+<div class="lang-bar">
+  <span class="lang-bar-label">Language</span>
+  <button class="lang-btn active" onclick="setLanguage('en')"  id="lang-en">English</button>
+  <button class="lang-btn"        onclick="setLanguage('yo')"  id="lang-yo">Yoruba</button>
+  <button class="lang-btn"        onclick="setLanguage('ha')"  id="lang-ha">Hausa</button>
+  <button class="lang-btn"        onclick="setLanguage('ig')"  id="lang-ig">Igbo</button>
+  <span class="lang-translate-status" id="translateStatus"></span>
+</div>
+
+<!-- TRANSLATION OVERLAY -->
+<div class="translating-overlay" id="translatingOverlay">
+  <svg width="40" height="48" viewBox="0 0 40 48" fill="none">
+    <line x1="20" y1="2" x2="20" y2="46" stroke="#C9A84C" stroke-width="2.5"/>
+    <line x1="4" y1="14" x2="36" y2="14" stroke="#C9A84C" stroke-width="2.5"/>
+  </svg>
+  <p id="translatingText">Translating to Yoruba…</p>
+</div>
+
+<!-- HAMBURGER -->
+<button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+  <span></span><span></span><span></span>
+  <div class="history-badge" id="historyBadge"></div>
+</button>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- HISTORY SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">✦ Sermon History</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+  <div class="sidebar-search">
+    <input type="text" id="historySearch" placeholder="Search sermons…" oninput="filterHistory()" />
+  </div>
+  <div class="sidebar-count" id="historyCount">0 SERMONS</div>
+  <div class="sidebar-list" id="historyList">
+    <div class="sidebar-empty show" id="sidebarEmpty">
+      <p>"The harvest is plentiful…"<br>Generate your first sermon<br>and it will appear here.</p>
+    </div>
+  </div>
+  <button class="sidebar-clear-btn" onclick="clearAllHistory()">✕ &nbsp;Clear All History</button>
+</div>
+
+<!-- HEADER -->
+<header>
+  <svg class="cross-svg" viewBox="0 0 40 48"><line x1="20" y1="2" x2="20" y2="46"/><line x1="4" y1="14" x2="36" y2="14"/></svg>
+  <h1 class="header-title">THE PULPIT</h1>
+  <p class="header-sub">Sermon Helper AI — Guided by the Holy Spirit, Crafted for Every Heart</p>
+  <div class="divider-ornament">
+    <div class="divider-line"></div>
+    <div class="divider-diamond"></div>
+    <div class="divider-line"></div>
+  </div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tab-sermon" onclick="showMode('sermon')">✦ Sermon Generator</button>
+    <button class="mode-tab"        id="tab-bible"  onclick="showMode('bible')">📖 Bible Study</button>
+    <button class="mode-tab"        id="tab-pedia"  onclick="showMode('pedia')">Pulpitpedia</button>
+  </div>
+</header>
+
+<main>
+  <!-- BIBLE STUDY -->
+  <div class="bible-study" id="bibleStudyView" style="display:none">
+    <div class="form-card">
+      <div class="section-label">Read a Passage</div>
+
+      <div class="bible-lookup-row">
+        <input type="text" id="bibleRefInput" placeholder="e.g. John 3:16-17, or Romans 8" />
+        <button class="action-btn primary" onclick="lookupBibleRef()">Go</button>
+      </div>
+
+      <div class="bible-browse-row">
+        <select id="bibleBookSelect" onchange="onBibleBookChange()"></select>
+        <select id="bibleChapterSelect" onchange="loadBibleChapter()"></select>
+        <select id="bibleTranslationSelect" onchange="reloadCurrentPassage()">
+          <optgroup label="English">
+            <option value="web">World English Bible (WEB)</option>
+            <option value="kjv">King James Version (KJV)</option>
+            <option value="asv">American Standard Version (ASV)</option>
+            <option value="bbe">Bible in Basic English (BBE)</option>
+          </optgroup>
+          <optgroup label="Yorùbá" id="bibleGroupYo">
+            <option value="api:yo" disabled>Loading Yoruba Bibles…</option>
+          </optgroup>
+          <optgroup label="Hausa" id="bibleGroupHa">
+            <option value="api:ha" disabled>Loading Hausa Bibles…</option>
+          </optgroup>
+          <optgroup label="Igbo" id="bibleGroupIg">
+            <option value="api:ig" disabled>Loading Igbo Bibles…</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="bible-passage-status" id="biblePassageStatus"></div>
+    </div>
+
+    <div class="bible-passage-card" id="biblePassageCard" style="display:none">
+      <h2 class="bible-passage-title" id="biblePassageTitle"></h2>
+      <div class="bible-passage-text" id="biblePassageText"></div>
+
+      <div class="bible-notes-section">
+        <div class="section-label">My Notes on This Passage</div>
+        <textarea id="bibleNotesArea" placeholder="Write your study notes here — they're saved automatically to this browser." oninput="onNotesInput()"></textarea>
+        <div class="bible-notes-status" id="bibleNotesStatus"></div>
+      </div>
+    </div>
+
+    <div class="bible-notes-list-card">
+      <div class="section-label">All Saved Notes</div>
+      <div id="bibleNotesList" class="bible-notes-list">
+        <p class="bible-notes-empty" id="bibleNotesEmpty">No notes yet — write one above and it'll show up here.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PULPITPEDIA -->
+  <div class="pedia-view" id="pulpitpediaView">
+    <div class="pedia-hero">
+      <div class="section-label">Reference Library</div>
+      <h2 class="pedia-title">Pulpitpedia</h2>
+      <p class="pedia-subtitle">A structured reference library for Scripture, biblical history, ancient texts, Christian history, archaeology, traditions, and difficult questions. Each entry distinguishes primary biblical evidence from later tradition or historical interpretation.</p>
+      <div class="pedia-search">
+        <input id="pediaSearchInput" type="search" placeholder="Search Jezebel, Ten Commandments, Enoch, Dead Sea Scrolls…" oninput="searchPulpitpedia()" onkeydown="if(event.key==='Enter') searchPulpitpedia()" />
+        <button class="action-btn primary" onclick="searchPulpitpedia()">Search</button>
+      </div>
+      <div class="pedia-filters" id="pediaFilters"></div>
+      <div class="pedia-research">
+        <div class="pedia-research-head">
+          <div>
+            <div class="pedia-research-title">Research Pulpitpedia</div>
+            <div class="pedia-research-status">Searches external reference indexes, then applies source discipline before presenting an answer.</div>
+          </div>
+          <button class="action-btn primary" onclick="researchPulpitpedia()">Research topic</button>
+        </div>
+        <div class="pedia-research-results" id="pediaResearchResults"></div>
+      </div>
+    </div>
+    <div class="pedia-results-meta" id="pediaResultsMeta"></div>
+    <div class="pedia-grid" id="pediaResults"></div>
+    <div class="pedia-article" id="pediaArticle" style="display:none"></div>
+    <div class="pedia-disclaimer">Pulpitpedia is designed to separate canonical Scripture, ancient sources, historical scholarship, and later tradition. An entry is not evidence that a claim is biblical or historically certain. Copyrighted source material is linked rather than reproduced.</div>
+  </div>
+
+  <!-- SERMON GENERATOR -->
+  <div class="sermon-generator" id="sermonGeneratorView">
+  <!-- FORM -->
+  <div class="form-card" id="formCard">
+    <div class="section-label">Sermon Details</div>
+    <div class="suggest-row">
+      <button class="suggest-btn" onclick="suggestTitles()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        Suggest Sermon Topics
+      </button>
+    </div>
+    <div id="suggestionsBox" class="suggestions-box"></div>
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label>Sermon Title / Topic</label>
+        <input type="text" id="sermonTitle" placeholder="e.g. Walking in the Light of God's Grace…" />
+      </div>
+      <div class="form-group">
+        <label>Scripture Focus (Optional)</label>
+        <input type="text" id="scriptureHint" placeholder="e.g. John 3:16, Psalms 23…" />
+      </div>
+      <div class="form-group">
+        <label>Target Audience</label>
+        <select id="audience">
+          <option value="general congregation">General Congregation</option>
+          <option value="youth">Youth & Young Adults</option>
+          <option value="children">Children</option>
+          <option value="married couples">Married Couples</option>
+          <option value="new believers">New Believers</option>
+          <option value="leaders">Church Leaders</option>
+          <option value="evangelism crusade">Evangelism / Crusade</option>
+          <option value="grief support">Grief & Comfort</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <label>Sermon Tone</label>
+        <div class="tone-grid">
+          <button class="tone-chip active" onclick="selectTone(this,'Inspirational & Uplifting')">✨ Inspirational</button>
+          <button class="tone-chip" onclick="selectTone(this,'Convicting & Repentance-focused')">🔥 Convicting</button>
+          <button class="tone-chip" onclick="selectTone(this,'Comforting & Healing')">🕊️ Comforting</button>
+          <button class="tone-chip" onclick="selectTone(this,'Teaching & Expository')">📖 Teaching</button>
+          <button class="tone-chip" onclick="selectTone(this,'Evangelistic & Soul-winning')">🌍 Evangelistic</button>
+          <button class="tone-chip" onclick="selectTone(this,'Bold & Prophetic')">⚡ Prophetic</button>
+        </div>
+      </div>
+      <div class="form-group full-width">
+        <label>Additional Context (Optional)</label>
+        <textarea id="context" placeholder="Any special occasion, theme, or message… (e.g. Church anniversary, fasting period, community crisis)"></textarea>
+      </div>
+      <div class="form-group full-width">
+        <label>Time Frame</label>
+        <div class="time-row">
+          <label class="time-toggle" onclick="toggleTime()">
+            <div class="toggle-switch" id="timeToggle"></div>
+            <span class="toggle-label">Set sermon duration</span>
+          </label>
+          <div class="time-input-wrap" id="timeInputWrap">
+            <input type="number" id="timeMinutes" value="30" min="5" max="120" style="width:70px" />
+            <span class="time-unit">MINUTES</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="generate-btn" id="generateBtn" onclick="generateSermon()">✦ &nbsp; Prepare This Sermon</button>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading-state" id="loadingState">
+    <svg class="loading-cross" viewBox="0 0 40 48"><line x1="20" y1="2" x2="20" y2="46" stroke="#C9A84C" stroke-width="2.5"/><line x1="4" y1="14" x2="36" y2="14" stroke="#C9A84C" stroke-width="2.5"/></svg>
+    <p class="loading-text">Preparing your message…</p>
+    <p class="loading-verse">"For the word of God is living and active, sharper than any double-edged sword…"</p>
+    <div class="progress-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="sermon-output" id="sermonOutput"></div>
+  </div><!-- /sermonGeneratorView -->
+</main>
+
+<footer><p>"Preach the word; be ready in season and out of season." — 2 Timothy 4:2</p></footer>
+
+<script>
+// ============================================================
+//  The Pulpit — Frontend JS v5.0
+//  Secure API call + Nigerian language translation system
+// ============================================================
+
+const API_ENDPOINT    = '/api/generate-sermon';
+const CACHE_KEY_BASE  = 'pulpit_translation_v2_';   // + sermonId + langCode
+const STORAGE_KEY     = 'pulpit_sermon_history';
+const LANG_PREF_KEY   = 'pulpit_lang_pref';
+const CLIENT_TIMEOUT  = 50000;
+
+// ============================================================
+//  LANGUAGE SYSTEM
+// ============================================================
+const LANG_CONFIG = {
+  en: { label: 'English',         flag: '🇬🇧' },
+  yo: { label: 'Yoruba',          flag: '🇳🇬' },
+  ha: { label: 'Hausa',           flag: '🇳🇬' },
+  ig: { label: 'Igbo',            flag: '🇳🇬' },
+};
+
+// Language-specific UI strings
+const UI_STRINGS = {
+  en: {
+    hook: 'OPENING HOOK', tension: 'THE TENSION', truth: 'CENTRAL TRUTH',
+    historical: 'HISTORICAL CONTEXT', today: 'WHY THIS MATTERS TODAY',
+    point: 'POINT', illustration: '✦ Illustration / Story', application: 'APPLICATION',
+    summary: 'SUMMARY', callToAction: 'CALL TO ACTION', closingIllustration: '✦ Closing Illustration',
+    intro: 'Introduction', introDesc: "Opening the door to the listener's heart",
+    context: 'Historical & Biblical Context', contextDesc: 'Grounding the Word in its rich soil',
+    mainPoints: 'Main Points', mainPointsDesc: 'powerful points to preach',
+    supporting: 'Supporting Scriptures', supportingDesc: 'Additional verses that reinforce the message',
+    conclusion: 'Conclusion & Call to Action', conclusionDesc: 'Sealing the Word into every heart',
+    altarCall: 'Altar Call', altarCallDesc: 'An invitation for hearts to respond',
+    prayer: 'Closing Prayer', prayerDesc: 'A pastoral blessing over the congregation',
+    notes: "Preacher's Notes", notesDesc: 'Delivery tips & practical reminders',
+    print: 'Print Sermon', copy: 'Copy Full Sermon', newSermon: 'New Sermon',
+    readAloud: 'Read Aloud', pause: 'Pause', resume: 'Resume', stopReading: 'Stop',
+    noVoice: 'No {lang} voice found on this device — reading in the closest available voice.',
+    generatingAudio: 'Generating…',
+  },
+  yo: {
+    hook: 'IBERE ASOTITO', tension: 'IPA TI A WA', truth: 'OTO PATAKI',
+    historical: 'ITO ITAN', today: 'KINI O TUMO SI LOnI',
+    point: 'ABALA', illustration: '✦ Apejuwe / Itan', application: 'LILO',
+    summary: 'AKOPО', callToAction: 'IPE SI ISE', closingIllustration: '✦ Apejuwe Ipari',
+    intro: 'Ifilọ', introDesc: 'Ṣiṣi ẹnu-ọna si ọkan olutẹtisi',
+    context: 'Itan-Bibeli', contextDesc: 'Gbigbe Ọrọ sinu ile rẹ',
+    mainPoints: 'Awọn Abala Pataki', mainPointsDesc: 'awọn abala pataki lati waasu',
+    supporting: 'Awọn Ẹsẹ Atilẹyin', supportingDesc: 'Awọn ẹsẹ miiran ti o fun agbara ifiranṣẹ',
+    conclusion: 'Ipari ati Ipe si Igbese', conclusionDesc: 'Titẹ Ọrọ sinu ọkan gbogbo eniyan',
+    altarCall: 'Ipe Pẹpẹ', altarCallDesc: 'Ipe fun awọn ọkan lati dahun',
+    prayer: 'Adura Ipari', prayerDesc: 'Ibukun asọtẹlẹ lori ijọ',
+    notes: 'Awọn Akọsilẹ Waasọ', notesDesc: 'Awọn imọran jiṣẹ ati awọn iranti to wulo',
+    print: 'Tẹ Waasọ Jade', copy: 'Daakọ Waasọ Pipe', newSermon: 'Waasọ Titun',
+    readAloud: 'Ka Waasọ', pause: 'Duro', resume: 'Tẹsiwaju', stopReading: 'Da duro',
+    noVoice: 'A ko ri ohun {lang} lori ẹrọ yi — a maa fi ohun to sunmọ ọ ka.',
+    generatingAudio: 'A n ṣe ohun…',
+  },
+  ha: {
+    hook: 'BUƊE MAGANA', tension: 'MATSALAR DA AKE CIKI', truth: 'GASKIYA TA TSAKIYA',
+    historical: 'TARIHI', today: 'ME YASA YAK KAMA YAKE A YAU',
+    point: 'BABI', illustration: '✦ Misali / Labari', application: 'AIWATARWA',
+    summary: 'TAKAITAWA', callToAction: 'KIRA ZUWA AIKI', closingIllustration: '✦ Misali na Karshe',
+    intro: 'Gabatarwa', introDesc: 'Buɗe ƙofar zuciyar mai sauraro',
+    context: 'Tarihi da Littafi Mai Tsarki', contextDesc: 'Samun gindin kalma a cikin ƙasarsa',
+    mainPoints: 'Manyan Batutuwa', mainPointsDesc: 'manyan batutuwa don wa\'azantarwa',
+    supporting: 'Ayoyin Tallafi', supportingDesc: 'Ƙarin ayoyi da ke ƙarfafa saƙo',
+    conclusion: 'Ƙarshe da Kira zuwa Aiki', conclusionDesc: 'Hatimi Kalma a cikin kowane zuciya',
+    altarCall: 'Kiran Bagade', altarCallDesc: 'Gayyata ga zukata su amsa',
+    prayer: 'Addu\'ar Rufe', prayerDesc: 'Albarka ta makiyaya akan ikilisiya',
+    notes: 'Bayanin Mai Wa\'azi', notesDesc: 'Nasihohin isar da saƙo da tunatarwa masu amfani',
+    print: 'Buga Wa\'azin', copy: 'Kwafi Cikakken Wa\'azin', newSermon: 'Sabon Wa\'azi',
+    readAloud: 'Karanta da Murya', pause: 'Dakata', resume: 'Ci gaba', stopReading: 'Tsaya',
+    noVoice: 'Ba a sami muryar {lang} akan wannan na\'ura ba — ana karantawa da muryar da ta fi kusa.',
+    generatingAudio: 'Ana samar da murya…',
+  },
+  ig: {
+    hook: 'IHE IBIDO', tension: 'NSOGBU DINA', truth: 'EZIOKWU ETITI',
+    historical: 'AKỤKỌ IHE MERE ỌHỤỤ', today: 'IHEOMA O PỤTARA TÀA',
+    point: 'IHE ỌMỤMA', illustration: '✦ Ihe Atụ / Akụkọ', application: 'ITINYE N\'OBE',
+    summary: 'NCHỊKỌTA', callToAction: 'AKỊ IZI IHE', closingIllustration: '✦ Ihe Atụ Njedebe',
+    intro: 'Mmalite', introDesc: 'Imepee ụzọ obi onye ọ bụla na-ege ntị',
+    context: 'Akụkọ Akwụkwọ Nsọ', contextDesc: 'Itinye okwu n\'ala ya bara ụba',
+    mainPoints: 'Isi Ihe Ndị A Kọọrọ', mainPointsDesc: 'isi ihe dị mkpa iji kwuo ihe ọmụma',
+    supporting: 'Versụ Ndị Na-akwado', supportingDesc: 'Versụ ndị ọzọ na-agwọ ozi ahụ ike',
+    conclusion: 'Njedebe na Akị', conclusionDesc: 'Imechi Okwu n\'obi onye ọ bụla',
+    altarCall: 'Akị Elu Ọfọ', altarCallDesc: 'Nkpọsa maka ọnụ obi izaghachi',
+    prayer: 'Ekpere Njedebe', prayerDesc: 'Ngọzi nna-oche n\'elu ụlọ ọrụ',
+    notes: 'Ndekọ Onye Na-akwọ Ihe', notesDesc: 'Ndụmọdụ nnyefe na ncheta bara uru',
+    print: 'Bipụta Ihe Ọmụma', copy: 'Detuo Ihe Ọmụma Nile', newSermon: 'Ihe Ọmụma Ọhụụ',
+    readAloud: 'Gụọ Ya Ọnụ', pause: 'Kwụsịtụ', resume: 'Gaa n\'ihu', stopReading: 'Kwụsị',
+    noVoice: 'Enweghị olu {lang} a chọtara na ngwaọrụ a — a ga na-agụ ya na olu kacha nso.',
+    generatingAudio: 'Na-emepụta olu…',
+  },
+};
+
+// ============================================================
+//  STATE
+// ============================================================
+let selectedTone     = 'Inspirational & Uplifting';
+let timeEnabled      = false;
+let sermonHistory    = [];
+let activeHistoryId  = null;
+let currentSermon    = null;  // raw English sermon data
+let currentTimeMins  = null;
+let currentLang      = localStorage.getItem(LANG_PREF_KEY) || 'en';
+let activeSermonId   = null;  // for cache keying
+
+// Read-aloud state
+const SPEECH_LANG_CODES = { en: 'en-US', yo: 'yo-NG', ha: 'ha-NG', ig: 'ig-NG' };
+let speechChunks      = [];   // array of text chunks queued for reading
+let speechChunkIndex  = 0;
+let speechState       = 'idle'; // 'idle' | 'loading' | 'speaking' | 'paused'
+let voicesReady       = false;
+
+// ============================================================
+//  BIBLE STUDY — state + static data
+// ============================================================
+const BIBLE_API_BASE   = 'https://bible-api.com';
+const BIBLE_NOTES_KEY  = 'pulpit_bible_notes';
+const BIBLE_PROXY_ENDPOINT = '/.netlify/functions/bible';
+const BIBLE_API_TRANSLATIONS = new Map(); // api:<lang> -> { id, name, copyrightStatement, language }
+let bibleApiReady = false;
+ // { [normalizedRef]: { text, refDisplay, updatedAt } }
+let currentPassageKey  = null; // normalized reference used as the notes storage key
+let notesSaveTimer     = null;
+
+// Standard Protestant canon: [Book name, chapter count]. Chapter counts are
+// fixed, public-domain facts — used only to populate the chapter dropdown.
+const BIBLE_BOOKS = [
+  ['Genesis',50],['Exodus',40],['Leviticus',27],['Numbers',36],['Deuteronomy',34],
+  ['Joshua',24],['Judges',21],['Ruth',4],['1 Samuel',31],['2 Samuel',24],
+  ['1 Kings',22],['2 Kings',25],['1 Chronicles',29],['2 Chronicles',36],
+  ['Ezra',10],['Nehemiah',13],['Esther',10],['Job',42],['Psalms',150],
+  ['Proverbs',31],['Ecclesiastes',12],['Song of Solomon',8],['Isaiah',66],
+  ['Jeremiah',52],['Lamentations',5],['Ezekiel',48],['Daniel',12],['Hosea',14],
+  ['Joel',3],['Amos',9],['Obadiah',1],['Jonah',4],['Micah',7],['Nahum',3],
+  ['Habakkuk',3],['Zephaniah',3],['Haggai',2],['Zechariah',14],['Malachi',4],
+  ['Matthew',28],['Mark',16],['Luke',24],['John',21],['Acts',28],['Romans',16],
+  ['1 Corinthians',16],['2 Corinthians',13],['Galatians',6],['Ephesians',6],
+  ['Philippians',4],['Colossians',4],['1 Thessalonians',5],['2 Thessalonians',3],
+  ['1 Timothy',6],['2 Timothy',4],['Titus',3],['Philemon',1],['Hebrews',13],
+  ['James',5],['1 Peter',5],['2 Peter',3],['1 John',5],['2 John',1],['3 John',1],
+  ['Jude',1],['Revelation',22],
+];
+
+let ttsAudioEl        = null; // reusable <audio> element for ElevenLabs playback (yo/ha/ig)
+
+const SUGGESTIONS = [
+  { title: "Walking in the Light: Leaving Darkness Behind",                cat: "Salvation & Redemption"    },
+  { title: "The God Who Never Sleeps: His Faithfulness in the Night Season",cat: "Faith & Trust"            },
+  { title: "When God Says Wait: The Grace of Unanswered Prayers",          cat: "Patience & Hope"          },
+  { title: "Broken But Not Destroyed: Rising From Your Lowest Point",      cat: "Healing & Restoration"    },
+  { title: "The Prodigal's Return: God's Love Has No Expiration Date",     cat: "Mercy & Grace"            },
+  { title: "Standing Firm When the Storm Rages",                           cat: "Endurance & Faith"        },
+  { title: "Identity in Christ: You Are Who He Says You Are",              cat: "Identity & Purpose"       },
+  { title: "The Fire of the Holy Spirit: Burning Away What Does Not Belong",cat: "Holy Spirit"             },
+  { title: "From Glory to Glory: God's Plan for Your Transformation",      cat: "Growth & Sanctification"  },
+  { title: "Love That Breaks Every Chain: Freedom Through the Cross",      cat: "Salvation & Love"         },
+  { title: "Forgiveness: The Gift That Releases Both Parties",             cat: "Forgiveness & Healing"    },
+  { title: "Heaven Is Real: Living With Eternity in Mind",                 cat: "Eternal Life"             },
+  { title: "The Power of a Praying Church",                                cat: "Prayer & Intercession"    },
+  { title: "Do Not Fear: God's Perfect Love Casts Out Fear",               cat: "Fear & Courage"           },
+  { title: "Stewardship: Managing What Heaven Has Entrusted to You",       cat: "Stewardship & Giving"     },
+];
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  loadHistory();
+  renderHistoryList();
+  updateLangButtons();
+  initSpeech();
+}
+
+// ============================================================
+//  READ ALOUD — browser-native text-to-speech (Web Speech API)
+// ============================================================
+function initSpeech() {
+  if (!('speechSynthesis' in window)) return;
+  // Voices load asynchronously in most browsers (esp. Chrome) — the first
+  // getVoices() call often returns an empty list until this fires.
+  const markReady = () => { voicesReady = true; };
+  window.speechSynthesis.onvoiceschanged = markReady;
+  if (window.speechSynthesis.getVoices().length) markReady();
+}
+
+// ============================================================
+//  MODE SWITCHING — Sermon Generator <-> Bible Study
+// ============================================================
+let bibleInitDone = false;
+
+function showMode(mode) {
+  const sermonView = document.getElementById('sermonGeneratorView');
+  const bibleView   = document.getElementById('bibleStudyView');
+  const pediaView   = document.getElementById('pulpitpediaView');
+  const tabSermon   = document.getElementById('tab-sermon');
+  const tabBible    = document.getElementById('tab-bible');
+  const tabPedia    = document.getElementById('tab-pedia');
+
+  sermonView.style.display = mode === 'sermon' ? 'block' : 'none';
+  bibleView.style.display  = mode === 'bible' ? 'block' : 'none';
+  pediaView.style.display  = mode === 'pedia' ? 'block' : 'none';
+  tabSermon.classList.toggle('active', mode === 'sermon');
+  tabBible.classList.toggle('active', mode === 'bible');
+  tabPedia.classList.toggle('active', mode === 'pedia');
+
+  if (mode === 'bible' && !bibleInitDone) {
+    bibleInitDone = true;
+    populateBibleBookSelect();
+    renderNotesList();
+  }
+  if (mode === 'pedia' && !pediaInitDone) initPulpitpedia();
+}
+
+// ============================================================
+//  PULPITPEDIA — curated, source-labelled reference library
+// ============================================================
+let pediaInitDone = false;
+let pediaCategory = 'All';
+
+const PULPITPEDIA = [
+  {id:'ten-commandments',title:'The Ten Commandments',cat:'Bible',status:'Canonical Scripture',summary:'The commandments given to Israel in the Sinai covenant. The two principal biblical presentations are Exodus 20:1-17 and Deuteronomy 5:4-21.',body:'The Decalogue is presented as part of the covenant at Sinai/Horeb. The wording and numbering conventions differ among Jewish and Christian traditions, but the two biblical passages are Exodus 20:1-17 and Deuteronomy 5:4-21.',refs:['Exodus 20:1-17','Deuteronomy 5:4-21'],sources:[['Bible Odyssey — Ten Commandments','https://www.bibleodyssey.org/places/people/ten-commandments/']]},
+  {id:'jezebel',title:'Jezebel: How Did She Die?',cat:'Bible',status:'Canonical Scripture',summary:'Jezebel died at Jezreel after Jehu seized power. The narrative is recorded in 2 Kings 9:30-37.',body:'According to 2 Kings 9, Jezebel looked out from a window when Jehu entered Jezreel. At Jehu’s command, attendants threw her down. Horses trampled her, and later only her skull, feet, and hands were found; dogs had consumed the rest. The account connects her death with Elijah’s earlier prophecy.',refs:['1 Kings 21:23','2 Kings 9:30-37'],sources:[['Bible Odyssey — Jezreel','https://www.bibleodyssey.org/dictionary/jezreel/']]},
+  {id:'seven-books-moses',title:'The “Sixth and Seventh Books of Moses”',cat:'Ancient Texts',status:'Later occult literature',summary:'Not additional books of the biblical Pentateuch. The title refers to a much later magical/grimoire tradition.',body:'The Bible contains five books traditionally called the Pentateuch or Torah: Genesis, Exodus, Leviticus, Numbers, and Deuteronomy. “The Sixth and Seventh Books of Moses” is a later work associated with magical and occult literature. A 1910 edition by L. W. de Laurence is preserved by the U.S. Library of Congress. It should not be presented as an ancient biblical book or as a sixth/seventh canonical book of Moses.',refs:['Deuteronomy 34:10-12'],sources:[['Library of Congress — 1910 edition','https://www.loc.gov/item/11000761/']]},
+  {id:'book-enoch',title:'1 Enoch',cat:'Ancient Texts',status:'Ancient Jewish pseudepigraphal literature',summary:'An ancient Jewish collection of writings associated with Enoch. It is not part of the Jewish or most Christian biblical canons, though it is canonical in the Ethiopian Orthodox Tewahedo Church.',body:'1 Enoch is a composite ancient Jewish work containing several sections with different themes and historical layers. It is important for understanding Second Temple Jewish thought. Jude 14-15 contains language closely related to 1 Enoch 1:9, but that does not by itself settle the question of the book’s canonical status in every Christian tradition.',refs:['Jude 14-15'],sources:[['Encyclopaedia Britannica — Book of Enoch','https://www.britannica.com/topic/First-Book-of-Enoch']]},
+  {id:'nephilim',title:'The Nephilim',cat:'Bible',status:'Canonical text; interpretation disputed',summary:'Genesis 6:1-4 mentions the Nephilim before the Flood. Their identity and the meaning of the passage have been interpreted in several ways.',body:'Genesis 6:1-4 mentions the Nephilim in a difficult passage involving the “sons of God,” human women, and the “mighty men” of old. Later Jewish and Christian traditions expanded the story, but those later expansions should be distinguished from what Genesis itself says.',refs:['Genesis 6:1-4','Numbers 13:33'],sources:[['Bible Odyssey — Nephilim','https://www.bibleodyssey.org/places/people/nephilim/']]},
+  {id:'melchizedek',title:'Melchizedek',cat:'Bible',status:'Canonical Scripture + later interpretation',summary:'A king of Salem and priest of God Most High who blesses Abram in Genesis 14.',body:'Melchizedek appears briefly in Genesis 14:18-20. Psalm 110:4 later uses Melchizedek as a priestly comparison, and Hebrews develops an extended theological argument around him. The biblical texts should be distinguished from later legends about his identity or origin.',refs:['Genesis 14:18-20','Psalm 110:4','Hebrews 7'],sources:[['Bible Odyssey — Melchizedek','https://www.bibleodyssey.org/places/people/melchizedek/']]},
+  {id:'ark-covenant',title:'Ark of the Covenant',cat:'Bible & Archaeology',status:'Canonical object; location unknown',summary:'The sacred chest associated with the covenant and Israel’s worship. Its last biblical mention does not establish a surviving modern location.',body:'The Ark is described throughout Exodus and the historical books. 2 Chronicles 35:3 refers to it in Josiah’s reign, while later biblical texts do not provide a reliable account of its ultimate fate. Claims that a modern institution or site possesses the Ark should therefore be treated as claims, not established fact.',refs:['Exodus 25:10-22','1 Kings 8','2 Chronicles 35:3','Jeremiah 3:16'],sources:[['Bible Odyssey — Ark of the Covenant','https://www.bibleodyssey.org/places/objects/ark-of-the-covenant/']]},
+  {id:'dead-sea-scrolls',title:'Dead Sea Scrolls',cat:'Bible & Archaeology',status:'Primary archaeological/manuscript evidence',summary:'Ancient Jewish manuscripts and fragments discovered at sites around the Dead Sea, including biblical and non-biblical texts.',body:'The Dead Sea Scrolls preserve thousands of fragments from roughly 930 manuscripts in the collection documented by the Israel Antiquities Authority. They include some of the oldest surviving copies of biblical texts as well as many other Jewish writings. They are evidence for the textual and religious world of ancient Judaism, not a single “lost Bible.”',refs:['Isaiah manuscripts','Deuteronomy manuscripts','Community Rule and other texts'],sources:[['Israel Antiquities Authority — Dead Sea Scrolls Digital Library','https://www.deadseascrolls.org.il/']]},
+  {id:'apocrypha',title:'Biblical Apocrypha',cat:'Ancient Texts',status:'Canon differs by tradition',summary:'A broad term often used for books included in some Christian Old Testament traditions but not others.',body:'“Apocrypha” is not a single universally defined collection. Roman Catholic, Eastern Orthodox, Protestant, and other traditions differ in which books they include in their canons. The term should therefore be accompanied by the specific tradition or collection being discussed.',refs:['Tobit','Judith','Wisdom of Solomon','Sirach','Baruch','1–2 Maccabees'],sources:[['Encyclopaedia Britannica — Apocrypha','https://www.britannica.com/topic/biblical-literature/Apocrypha']]},
+  {id:'pseudepigrapha',title:'Pseudepigrapha',cat:'Ancient Texts',status:'Scholarly classification',summary:'A modern scholarly label for various ancient Jewish and Christian writings attributed to famous biblical figures but not generally accepted as genuinely authored by them.',body:'Pseudepigrapha is a classification rather than a single canon. Examples include works associated with Enoch, the patriarchs, Moses, and other biblical figures. Attribution, date, language, manuscript history, and community use must be evaluated separately for each text.',refs:['1 Enoch','Jubilees','Testaments of the Twelve Patriarchs'],sources:[['Encyclopaedia Britannica — Pseudepigrapha','https://www.britannica.com/topic/pseudepigrapha']]},
+  {id:'jubilees',title:'Book of Jubilees',cat:'Ancient Texts',status:'Second Temple Jewish literature',summary:'An ancient Jewish work that retells material from Genesis and Exodus with a distinctive chronological and calendrical framework.',body:'Jubilees rewrites biblical narratives from creation through the giving of the law and organizes history around jubilees and a solar calendar. It is an important witness to Second Temple Jewish interpretation and is not part of most biblical canons.',refs:['Genesis and Exodus traditions'],sources:[['Encyclopaedia Britannica — Book of Jubilees','https://www.britannica.com/topic/Jubilees']]},
+  {id:'gospel-thomas',title:'Gospel of Thomas',cat:'Ancient Texts',status:'Early Christian non-canonical text',summary:'A collection of sayings attributed to Jesus, preserved most fully in a Coptic manuscript found at Nag Hammadi.',body:'The Gospel of Thomas contains sayings attributed to Jesus rather than a narrative of his ministry. Scholars debate its date, sources, and relationship to the canonical Gospels. It is not part of the New Testament canon used by mainstream Christian traditions.',refs:['Nag Hammadi codices'],sources:[['Encyclopaedia Britannica — Gospel According to Thomas','https://www.britannica.com/topic/Gospel-According-to-Thomas']]},
+  {id:'second-temple',title:'Second Temple Judaism',cat:'History',status:'Historical period',summary:'The period between the rebuilding of the Jerusalem Temple and its destruction in 70 CE, crucial for understanding the world of the New Testament.',body:'The Second Temple period spans major Persian, Hellenistic, Hasmonean, and Roman developments. Jewish groups, institutions, texts, and expectations varied substantially during this period. Treating Judaism of the era as monolithic creates historical distortions.',refs:['Ezra 1-6','Haggai','Zechariah','Josephus and Second Temple sources'],sources:[['Encyclopaedia Britannica — Second Temple','https://www.britannica.com/topic/Second-Temple']]},
+  {id:'maccabean-revolt',title:'Maccabean Revolt',cat:'History',status:'Historical event',summary:'The Jewish revolt against Seleucid rule in the second century BCE, associated with the Maccabean family and the Hasmonean dynasty.',body:'The revolt began under Mattathias and his sons after policies associated with Antiochus IV Epiphanes. The Books of 1 and 2 Maccabees preserve important accounts, though they differ in emphasis and scope.',refs:['1 Maccabees 1-4','2 Maccabees 6-10'],sources:[['Encyclopaedia Britannica — Maccabees','https://www.britannica.com/topic/Maccabees']]},
+  {id:'pharisees',title:'Pharisees',cat:'Bible & History',status:'Historical Jewish movement',summary:'A Jewish movement active during the Second Temple and early Roman periods, frequently mentioned in the New Testament.',body:'The Pharisees were one of several Jewish groups active in the late Second Temple period. The New Testament sometimes depicts disputes between Jesus and Pharisees, but those disputes should not be turned into a blanket condemnation of Judaism or all Pharisees.',refs:['Matthew 23','Mark 7','Josephus, Jewish Antiquities'],sources:[['Encyclopaedia Britannica — Pharisee','https://www.britannica.com/topic/Pharisee']]},
+  {id:'sadducees',title:'Sadducees',cat:'Bible & History',status:'Historical Jewish movement',summary:'An influential Jewish group associated with the priestly and aristocratic leadership of the Second Temple period.',body:'The Sadducees appear in the New Testament and other ancient sources. Their beliefs and social position must be reconstructed from sources that are not equally detailed or neutral.',refs:['Matthew 22:23-33','Acts 23:6-8'],sources:[['Encyclopaedia Britannica — Sadducee','https://www.britannica.com/topic/Sadducee']]},
+  {id:'essenes',title:'Essenes',cat:'Bible & History',status:'Historical Jewish group; identification debated',summary:'An ancient Jewish group described by Josephus and other writers and often discussed in relation to the Dead Sea Scrolls.',body:'The relationship between the Essenes and the communities responsible for the Dead Sea Scrolls remains a major scholarly discussion. It is safer to say the connection is proposed and debated than to present it as settled fact.',refs:['Josephus, Jewish War 2.119-161'],sources:[['Encyclopaedia Britannica — Essene','https://www.britannica.com/topic/Essene']]},
+  {id:'nicaea',title:'Council of Nicaea (325 CE)',cat:'Christian History',status:'Historical event',summary:'The first ecumenical council convened under Constantine, known especially for its creed and its controversy over Arius and the nature of Christ.',body:'Nicaea addressed a theological controversy involving Arius and the relationship of the Son to the Father. The council produced a creed and disciplinary decisions. The popular claim that Nicaea “invented Christianity” or “decided which books belong in the Bible” is historically inaccurate; the canon question was not simply settled there.',refs:['Nicene Creed','Council of Nicaea, 325 CE'],sources:[['Encyclopaedia Britannica — Council of Nicaea','https://www.britannica.com/event/Council-of-Nicaea-325']]},
+  {id:'constantine',title:'Constantine the Great',cat:'Christian History',status:'Historical figure',summary:'Roman emperor whose reign transformed Christianity’s public position within the Roman Empire.',body:'Constantine supported Christianity after his rise to power and convened the Council of Nicaea in 325. His policies were important, but the claim that he single-handedly “created Christianity” is not supported by the historical record.',refs:['Council of Nicaea','Edict of Milan (313 CE)'],sources:[['Encyclopaedia Britannica — Constantine I','https://www.britannica.com/biography/Constantine-I-Roman-emperor']]},
+  {id:'church-fathers',title:'Church Fathers',cat:'Christian History',status:'Historical/theological category',summary:'Early Christian writers whose works became important for theology, biblical interpretation, worship, and church history.',body:'“Church Fathers” is a broad category. Important figures include Ignatius of Antioch, Irenaeus, Origen, Athanasius, Augustine, and others, though they differed substantially in theology, context, and method.',refs:['Ignatius','Irenaeus','Origen','Athanasius','Augustine'],sources:[['Encyclopaedia Britannica — Church Fathers','https://www.britannica.com/topic/Church-Father']]},
+  {id:'medieval-christianity',title:'Medieval Christianity',cat:'Medieval History',status:'Historical period',summary:'Christianity in Europe, the Byzantine world, the Middle East, Africa, and beyond during the medieval centuries.',body:'“Medieval Christianity” covers many centuries and regions, so it should not be reduced to Western Europe alone. Eastern Christianity, African Christianity, Syriac traditions, Islamic-Christian encounters, monastic movements, scholasticism, crusading, and the growth of different institutions all belong to the wider history.',refs:['Late Antiquity through the late medieval period'],sources:[['Encyclopaedia Britannica — Christianity: The Middle Ages','https://www.britannica.com/topic/Christianity/The-Middle-Ages']]},
+  {id:'knights-templar',title:'Knights Templar',cat:'Medieval History',status:'Historical military-religious order',summary:'A medieval Christian military order founded in the early twelfth century and suppressed in the early fourteenth century.',body:'The Knights Templar were a real medieval institution, but later legends attribute hidden treasures, secret doctrines, and occult practices to them without equivalent historical evidence. Pulpitpedia separates documented history from later conspiracy traditions.',refs:['Templar history, 12th-14th centuries'],sources:[['Encyclopaedia Britannica — Knights Templar','https://www.britannica.com/topic/Knights-Templars']]},
+  {id:'lilith',title:'Lilith',cat:'Tradition & Legend',status:'Later Jewish tradition; not a Genesis character',summary:'A figure with roots in ancient Near Eastern and Jewish traditions who was later developed in medieval Jewish literature as a female demon and, in some modern retellings, as Adam’s first wife.',body:'Genesis does not name Lilith as Adam’s first wife. The popular “first wife of Adam” story is associated especially with the medieval Alphabet of Ben Sira tradition and later interpretations. Earlier references to lilith-like beings exist in older Mesopotamian and Jewish materials, but they are not identical to every later Lilith story.',refs:['Genesis 1-3; later Jewish literature'],sources:[['Encyclopaedia Britannica — Lilith','https://www.britannica.com/topic/Lilith-Jewish-folklore']]},
+  {id:'septuagint',title:'Septuagint',cat:'Bible & Textual History',status:'Ancient Greek translation',summary:'The ancient Greek translation of Jewish Scriptures, produced over time for Greek-speaking Jewish communities.',body:'The Septuagint is a collection of Greek translations and related textual traditions rather than a single translation produced at one moment. It is important for the history of the Hebrew Bible and for early Christian Scripture quotation.',refs:['Greek Pentateuch; later Greek biblical books'],sources:[['Encyclopaedia Britannica — Septuagint','https://www.britannica.com/topic/Septuagint']]},
+  {id:'masoretic-text',title:'Masoretic Text',cat:'Bible & Textual History',status:'Hebrew textual tradition',summary:'The medieval Hebrew textual tradition of the Jewish Bible preserved by the Masoretes, including detailed vocalization and textual notes.',body:'The Masoretic Text is foundational for modern Hebrew Bible editions. It is not the only ancient textual witness: the Dead Sea Scrolls, Septuagint, Samaritan Pentateuch, and other sources contribute to textual criticism.',refs:['Hebrew Bible textual tradition'],sources:[['Encyclopaedia Britannica — Masoretic text','https://www.britannica.com/topic/Masoretic-text']]},
+  {id:'pentateuch',title:'Pentateuch / Torah',cat:'Bible',status:'Canonical Scripture',summary:'The first five books of the Bible: Genesis, Exodus, Leviticus, Numbers, and Deuteronomy.',body:'The Pentateuch is called the Torah in Jewish tradition and is central to both Judaism and Christianity. Moses is traditionally associated with the Torah, while modern scholarship studies its composition, sources, and final form in more complex ways.',refs:['Genesis','Exodus','Leviticus','Numbers','Deuteronomy'],sources:[['Encyclopaedia Britannica — Pentateuch','https://www.britannica.com/topic/Pentateuch']]}
+];
+
+function initPulpitpedia() {
+  pediaInitDone = true;
+  const cats = ['All', ...new Set(PULPITPEDIA.map(x => x.cat))];
+  document.getElementById('pediaFilters').innerHTML = cats.map(cat => `<button class="pedia-filter${cat === 'All' ? ' active' : ''}" onclick="setPediaCategory(${JSON.stringify(cat)})">${esc(cat)}</button>`).join('');
+  renderPediaResults(PULPITPEDIA);
+}
+
+function setPediaCategory(category) {
+  pediaCategory = category;
+  document.querySelectorAll('.pedia-filter').forEach(btn => btn.classList.toggle('active', btn.textContent === category));
+  searchPulpitpedia();
+}
+
+function searchPulpitpedia() {
+  if (!pediaInitDone) initPulpitpedia();
+  const q = document.getElementById('pediaSearchInput').value.trim().toLowerCase();
+  const normalizeSearch = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const words = normalizeSearch(q).split(/\s+/).filter(Boolean);
+  const results = PULPITPEDIA.filter(item => {
+    const categoryMatch = pediaCategory === 'All' || item.cat === pediaCategory;
+    if (!categoryMatch) return false;
+    if (!words.length) return true;
+    const hay = normalizeSearch([item.title,item.cat,item.status,item.summary,item.body,...item.refs].join(' '));
+    return words.every(word => hay.includes(word));
+  });
+  renderPediaResults(results);
+}
+
+function renderPediaResults(results) {
+  const meta = document.getElementById('pediaResultsMeta');
+  const grid = document.getElementById('pediaResults');
+  const article = document.getElementById('pediaArticle');
+  article.style.display = 'none';
+  meta.textContent = `${results.length} verified reference entr${results.length === 1 ? 'y' : 'ies'} in the current library`;
+  if (!results.length) {
+    grid.innerHTML = `<div class="pedia-empty">No matching entry is currently in the curated Pulpitpedia index.<br>That does not mean the subject is false or unknown; it means the indexed source set does not yet contain a reviewed entry for it.<br><button class="action-btn primary" style="margin-top:14px" onclick="researchPulpitpedia()">Research this topic</button></div>`;
+    return;
+  }
+  grid.innerHTML = results.map(item => `<article class="pedia-card" onclick="openPediaEntry('${item.id}')"><div class="pedia-card-cat">${esc(item.cat)}</div><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p></article>`).join('');
+}
+
+function openPediaEntry(id) {
+  const item = PULPITPEDIA.find(x => x.id === id);
+  if (!item) return;
+  const article = document.getElementById('pediaArticle');
+  article.innerHTML = `<div class="pedia-article-head"><div><h2>${esc(item.title)}</h2><p>${esc(item.summary)}</p></div><span class="pedia-badge">${esc(item.status)}</span></div><h3>What the sources support</h3><p>${esc(item.body)}</p><h3>Primary / reference texts</h3><ul>${item.refs.map(ref => `<li>${esc(ref)}</li>`).join('')}</ul><h3>Sources</h3>${item.sources.map(([name,url]) => `<a class="pedia-source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(name)}</a>`).join('')}<div class="pedia-note">Source discipline: Pulpitpedia does not treat later tradition, folklore, apocryphal literature, or internet claims as canonical Scripture. Where evidence is disputed, the entry says so.</div>`;
+  article.style.display = 'block';
+  article.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ============================================================
+//  PULPITPEDIA — evidence-aware external research
+// ============================================================
+async function researchPulpitpedia() {
+  const q = document.getElementById('pediaSearchInput').value.trim();
+  const box = document.getElementById('pediaResearchResults');
+  if (!q) { box.innerHTML = '<div class="pedia-empty">Enter a topic first.</div>'; return; }
+  box.innerHTML = '<div class="pedia-research-status">Researching the topic and checking reference sources…</div>';
+  try {
+    const res = await fetch('/api/pedia-research?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Research service unavailable.');
+    let html = '';
+    if (data.answer) {
+      html += `<div class="pedia-research-answer"><h3>Research synthesis</h3><p>${esc(data.answer.summary || '')}</p>`;
+      if (Array.isArray(data.answer.distinctions) && data.answer.distinctions.length) {
+        html += '<h3>Evidence distinctions</h3><ul>' + data.answer.distinctions.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>';
+      }
+      if (data.answer.caution) html += `<div class="pedia-note">${esc(data.answer.caution)}</div>`;
+      html += '</div>';
+    }
+    if (Array.isArray(data.sources) && data.sources.length) {
+      html += data.sources.map(src => `<div class="pedia-research-card"><strong>${esc(src.title || 'Reference source')}</strong><p>${esc(src.description || '')}</p><span class="pedia-evidence">${esc(src.type || 'Reference')}</span><div class="pedia-source-meta">${esc(src.publisher || '')}${src.url ? ` · <a class="pedia-source" href="${esc(src.url)}" target="_blank" rel="noopener noreferrer">Open source</a>` : ''}</div></div>`).join('');
+    }
+    if (!html) html = '<div class="pedia-empty">No reliable reference material was returned for this topic.</div>';
+    box.innerHTML = html;
+  } catch (err) {
+    box.innerHTML = `<div class="pedia-empty">${esc(err.message || 'Research failed.')}<br>Try a more specific topic.</div>`;
+  }
+}
+
+// ============================================================
+//  BIBLE STUDY — browsing + lookup
+// ============================================================
+async function populateBibleBookSelect() {
+  const sel = document.getElementById('bibleBookSelect');
+  sel.innerHTML = BIBLE_BOOKS.map(([name]) => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+  onBibleBookChange();
+  await loadBibleApiTranslations();
+}
+
+async function loadBibleApiTranslations() {
+  try {
+    const res = await fetch(`${BIBLE_PROXY_ENDPOINT}?action=bibles`);
+    if (!res.ok) throw new Error('Bible catalog unavailable');
+    const data = await res.json();
+    const languages = data?.languages || {};
+
+    for (const lang of ['yo', 'ha', 'ig']) {
+      const group = document.getElementById(`bibleGroup${lang === 'yo' ? 'Yo' : lang === 'ha' ? 'Ha' : 'Ig'}`);
+      if (!group) continue;
+      const bibles = Array.isArray(languages[lang]) ? languages[lang] : [];
+      group.innerHTML = bibles.length
+        ? bibles.map((b, i) => {
+            const value = `api:${lang}:${i}`;
+            BIBLE_API_TRANSLATIONS.set(value, b);
+            return `<option value="${esc(value)}">${esc(b.nameLocal || b.name || `${lang.toUpperCase()} Bible`)}</option>`;
+          }).join('')
+        : `<option value="api:${lang}" disabled>No verified ${lang === 'yo' ? 'Yoruba' : lang === 'ha' ? 'Hausa' : 'Igbo'} Bible available</option>`;
+    }
+    bibleApiReady = true;
+  } catch (err) {
+    log('Bible catalog unavailable', { error: err.message });
+    document.getElementById('biblePassageStatus').textContent = 'Yoruba/Hausa/Igbo Bible catalog is temporarily unavailable. English Bibles remain available.';
+  }
+}
+
+function onBibleBookChange() {
+  const book = document.getElementById('bibleBookSelect').value;
+  const entry = BIBLE_BOOKS.find(b => b[0] === book);
+  const chapterCount = entry ? entry[1] : 1;
+  const chSel = document.getElementById('bibleChapterSelect');
+  let opts = '';
+  for (let i = 1; i <= chapterCount; i++) opts += `<option value="${i}">Chapter ${i}</option>`;
+  chSel.innerHTML = opts;
+  loadBibleChapter();
+}
+
+function loadBibleChapter() {
+  const book = document.getElementById('bibleBookSelect').value;
+  const ch   = document.getElementById('bibleChapterSelect').value;
+  fetchAndRenderPassage(`${book} ${ch}`);
+}
+
+function lookupBibleRef() {
+  const ref = document.getElementById('bibleRefInput').value.trim();
+  if (!ref) return;
+  fetchAndRenderPassage(ref);
+}
+
+function reloadCurrentPassage() {
+  if (currentPassageKey) fetchAndRenderPassage(currentPassageKey);
+}
+
+async function fetchAndRenderPassage(reference) {
+  const statusEl = document.getElementById('biblePassageStatus');
+  const card     = document.getElementById('biblePassageCard');
+  const translation = document.getElementById('bibleTranslationSelect').value;
+
+  statusEl.textContent = 'Loading…';
+  card.style.display = 'none';
+
+  try {
+    if (translation.startsWith('api:')) {
+      const bible = BIBLE_API_TRANSLATIONS.get(translation);
+      if (!bible?.id) throw new Error('That Bible version is not available yet.');
+
+      const res = await fetch(`${BIBLE_PROXY_ENDPOINT}?action=passage&bibleId=${encodeURIComponent(bible.id)}&reference=${encodeURIComponent(reference)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Bible lookup failed (${res.status})`);
+      }
+      const data = await res.json();
+      if (!data?.passage?.text) throw new Error('Passage not found — check the reference.');
+
+      renderApiBiblePassage(data.passage, bible);
+      statusEl.textContent = '';
+      return;
+    }
+
+    const encoded = encodeURIComponent(reference).replace(/%20/g, '+');
+    const res = await fetch(`${BIBLE_API_BASE}/${encoded}?translation=${encodeURIComponent(translation)}`);
+    if (!res.ok) throw new Error(res.status === 404 ? 'Passage not found — check the reference.' : `Lookup failed (${res.status})`);
+    const data = await res.json();
+    if (!data.verses || !data.verses.length) throw new Error('Passage not found — check the reference.');
+
+    renderPassage(data);
+    statusEl.textContent = '';
+  } catch (err) {
+    statusEl.textContent = err.message || 'Could not load that passage.';
+  }
+}
+
+function renderApiBiblePassage(passage, bible) {
+  const title = passage.reference || 'Passage';
+  document.getElementById('biblePassageTitle').textContent = title;
+  document.getElementById('biblePassageText').innerHTML = esc(passage.text).replace(/\n/g, '<br>');
+  document.getElementById('biblePassageCard').style.display = 'block';
+
+  const copyright = bible.copyrightStatement || '';
+  let credit = document.getElementById('bibleCopyright');
+  if (!credit) {
+    credit = document.createElement('div');
+    credit.id = 'bibleCopyright';
+    credit.className = 'bible-copyright';
+    document.getElementById('biblePassageText').after(credit);
+  }
+  credit.textContent = copyright;
+  credit.style.display = copyright ? 'block' : 'none';
+
+  currentPassageKey = `${bible.id}:${title}`.toLowerCase().replace(/\s+/g, ' ').trim();
+  loadNoteForCurrentPassage();
+}
+
+function renderPassage(data) {
+  const title = data.reference || 'Passage';
+  document.getElementById('biblePassageTitle').textContent = title;
+  document.getElementById('biblePassageText').innerHTML = data.verses.map(v =>
+    `<span class="bible-verse-num">${v.verse}</span>${esc(v.text.trim())} `
+  ).join('');
+  document.getElementById('biblePassageCard').style.display = 'block';
+
+  // Normalize the key so "John 3" and "john 3" share one note
+  currentPassageKey = title.toLowerCase().replace(/\s+/g, ' ').trim();
+  loadNoteForCurrentPassage();
+}
+
+// ============================================================
+//  BIBLE STUDY — notes (saved to this browser only)
+// ============================================================
+function loadBibleNotes() {
+  try { return JSON.parse(localStorage.getItem(BIBLE_NOTES_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function saveBibleNotes(notes) {
+  try { localStorage.setItem(BIBLE_NOTES_KEY, JSON.stringify(notes)); } catch {}
+}
+
+function loadNoteForCurrentPassage() {
+  const notes = loadBibleNotes();
+  const entry = notes[currentPassageKey];
+  document.getElementById('bibleNotesArea').value = entry ? entry.text : '';
+  document.getElementById('bibleNotesStatus').textContent = '';
+}
+
+function onNotesInput() {
+  clearTimeout(notesSaveTimer);
+  const statusEl = document.getElementById('bibleNotesStatus');
+  statusEl.textContent = 'Saving…';
+  notesSaveTimer = setTimeout(() => {
+    const text = document.getElementById('bibleNotesArea').value;
+    const notes = loadBibleNotes();
+    const refDisplay = document.getElementById('biblePassageTitle').textContent;
+    if (text.trim()) {
+      notes[currentPassageKey] = { text, refDisplay, updatedAt: Date.now() };
+    } else {
+      delete notes[currentPassageKey];
+    }
+    saveBibleNotes(notes);
+    statusEl.textContent = 'Saved ✓';
+    renderNotesList();
+  }, 600);
+}
+
+function renderNotesList() {
+  const notes = loadBibleNotes();
+  const keys = Object.keys(notes).sort((a, b) => notes[b].updatedAt - notes[a].updatedAt);
+  const listEl  = document.getElementById('bibleNotesList');
+  const emptyEl = document.getElementById('bibleNotesEmpty');
+
+  if (!keys.length) {
+    listEl.innerHTML = '';
+    listEl.appendChild(emptyEl);
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  listEl.innerHTML = keys.map(key => {
+    const n = notes[key];
+    const snippet = n.text.replace(/\n/g, ' ').slice(0, 90);
+    return `<div class="bible-note-item" onclick="jumpToNote('${esc(key).replace(/'/g, "\\'")}')">
+      <button class="bible-note-item-del" onclick="event.stopPropagation(); deleteNote('${esc(key).replace(/'/g, "\\'")}')" title="Delete note">✕</button>
+      <div class="bible-note-item-ref">${esc(n.refDisplay)}</div>
+      <div class="bible-note-item-snippet">${esc(snippet)}</div>
+    </div>`;
+  }).join('');
+}
+
+function jumpToNote(key) {
+  fetchAndRenderPassage(key);
+  document.getElementById('bibleStudyView').scrollIntoView({ behavior: 'smooth' });
+}
+
+function deleteNote(key) {
+  const notes = loadBibleNotes();
+  delete notes[key];
+  saveBibleNotes(notes);
+  renderNotesList();
+  if (currentPassageKey === key) {
+    document.getElementById('bibleNotesArea').value = '';
+  }
+}
+
+// Pick the best available voice for a target language. Falls back to any
+// voice sharing the base language ("yo"), then to the browser default —
+// most desktop/mobile OSes simply don't ship Yoruba/Hausa/Igbo voices, so
+// callers should treat a null "exact" match as "read anyway, but say so."
+function pickVoice(langCode) {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return { voice: null, exact: false };
+  const base = langCode.split('-')[0];
+  const exact = voices.find(v => v.lang.toLowerCase() === langCode.toLowerCase());
+  if (exact) return { voice: exact, exact: true };
+  const partial = voices.find(v => v.lang.toLowerCase().startsWith(base));
+  if (partial) return { voice: partial, exact: true };
+  const fallback = voices.find(v => v.lang.toLowerCase().startsWith('en')) || voices[0];
+  return { voice: fallback, exact: false };
+}
+
+// Builds the spoken script from a sermon object. Preacher's notes are
+// delivery tips addressed to the preacher, not congregation-facing
+// content, so they're skipped here — everything else meant to be
+// preached is included.
+function buildReadableSermon(s) {
+  const parts = [];
+  const add = (t) => { if (t && String(t).trim()) parts.push(String(t).trim()); };
+
+  add(s.title);
+  if (s.theme_verse) add(`${s.theme_verse.reference}. ${s.theme_verse.text}`);
+
+  const i = s.introduction || {};
+  add(i.hook); add(i.problem_statement); add(i.thesis);
+
+  const bg = s.background_context || {};
+  add(bg.historical); add(bg.why_it_matters_today);
+
+  (s.main_points || []).forEach((pt, idx) => {
+    add(`Point ${idx + 1}: ${pt.title || ''}`);
+    if (pt.scripture) add(`${pt.scripture.reference}. ${pt.scripture.text}`);
+    add(pt.exposition); add(pt.illustration); add(pt.application);
+  });
+
+  (s.supporting_verses || []).forEach(v => add(`${v.reference}. ${v.text}`));
+
+  const c = s.conclusion || {};
+  add(c.summary); add(c.call_to_action); add(c.closing_illustration);
+
+  add(s.altar_call);
+  add(s.closing_prayer);
+
+  return parts;
+}
+
+function toggleReadAloud() {
+  if (speechState === 'loading') return; // already generating — ignore extra clicks
+  if (!('speechSynthesis' in window) && currentLang === 'en') {
+    showTranslateStatus('Read Aloud is not supported in this browser.');
+    return;
+  }
+  if (speechState === 'speaking') { pauseReading(); return; }
+  if (speechState === 'paused')   { resumeReading(); return; }
+  startReading();
+}
+
+function startReading() {
+  if (!currentSermon) return;
+  window.speechSynthesis.cancel();
+  if (ttsAudioEl) ttsAudioEl.pause();
+
+  const sermonForLang = currentLang === 'en' ? currentSermon
+    : JSON.parse(localStorage.getItem(`${CACHE_KEY_BASE}${activeSermonId}_${currentLang}`) || 'null') || currentSermon;
+
+  speechChunks     = buildReadableSermon(sermonForLang);
+  speechChunkIndex = 0;
+
+  if (currentLang === 'en') {
+    // Free, unlimited, and English voices are near-universal — no need
+    // for a paid API here.
+    const langCode = SPEECH_LANG_CODES.en;
+    const { voice } = pickVoice(langCode);
+    speakNextChunk(voice, langCode);
+    speechState = 'speaking';
+    updateReadAloudButton();
+  } else {
+    // Yoruba/Hausa/Igbo — most devices have no native voice at all for
+    // these, so route through ElevenLabs instead (rate-limited free tier).
+    speechState = 'loading';
+    updateReadAloudButton();
+    playNextElevenLabsChunk();
+  }
+}
+
+function getAudioEl() {
+  if (!ttsAudioEl) {
+    ttsAudioEl = new Audio();
+    ttsAudioEl.addEventListener('ended', () => {
+      speechChunkIndex++;
+      if (speechState === 'speaking') playNextElevenLabsChunk();
+    });
+  }
+  return ttsAudioEl;
+}
+
+async function playNextElevenLabsChunk() {
+  if (speechChunkIndex >= speechChunks.length) {
+    speechState = 'idle';
+    updateReadAloudButton();
+    return;
+  }
+  speechState = 'loading';
+  updateReadAloudButton();
+  try {
+    const res = await fetch('/api/text-to-speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: speechChunks[speechChunkIndex], lang: currentLang }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Voice generation failed.');
+    }
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = getAudioEl();
+    audio.src   = url;
+    speechState = 'speaking';
+    updateReadAloudButton();
+    await audio.play();
+  } catch (err) {
+    showTranslateStatus(err.message || 'Could not generate audio right now — try again shortly.');
+    speechState = 'idle';
+    updateReadAloudButton();
+  }
+}
+
+function speakNextChunk(voice, langCode) {
+  if (speechChunkIndex >= speechChunks.length) {
+    speechState = 'idle';
+    updateReadAloudButton();
+    return;
+  }
+  const utter = new SpeechSynthesisUtterance(speechChunks[speechChunkIndex]);
+  utter.lang = langCode;
+  if (voice) utter.voice = voice;
+  utter.rate = 0.95;
+  utter.onend = () => {
+    speechChunkIndex++;
+    if (speechState === 'speaking') speakNextChunk(voice, langCode);
+  };
+  utter.onerror = () => {
+    speechChunkIndex++;
+    if (speechState === 'speaking') speakNextChunk(voice, langCode);
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+function pauseReading() {
+  if (currentLang === 'en') window.speechSynthesis.pause();
+  else if (ttsAudioEl)      ttsAudioEl.pause();
+  speechState = 'paused';
+  updateReadAloudButton();
+}
+
+function resumeReading() {
+  if (currentLang === 'en') window.speechSynthesis.resume();
+  else if (ttsAudioEl)      ttsAudioEl.play();
+  speechState = 'speaking';
+  updateReadAloudButton();
+}
+
+function stopReading() {
+  window.speechSynthesis.cancel();
+  if (ttsAudioEl) { ttsAudioEl.pause(); ttsAudioEl.removeAttribute('src'); }
+  speechState = 'idle';
+  speechChunkIndex = 0;
+  updateReadAloudButton();
+}
+
+function updateReadAloudButton() {
+  const btn = document.getElementById('readAloudBtn');
+  const stopBtn = document.getElementById('stopReadingBtn');
+  if (!btn) return;
+  const ui = UI_STRINGS[currentLang] || UI_STRINGS.en;
+  if (speechState === 'loading') btn.innerHTML = `⏳ ${ui.generatingAudio || 'Generating…'}`;
+  else if (speechState === 'speaking') btn.innerHTML = `⏸ ${ui.pause}`;
+  else if (speechState === 'paused') btn.innerHTML = `▶ ${ui.resume}`;
+  else btn.innerHTML = `🔊 ${ui.readAloud}`;
+  if (stopBtn) stopBtn.style.display = speechState === 'idle' ? 'none' : 'inline-flex';
+}
+
+
+// ============================================================
+function updateLangButtons() {
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.id === 'lang-' + currentLang);
+  });
+}
+
+async function setLanguage(lang) {
+  if (lang === currentLang) return;
+  currentLang = lang;
+  localStorage.setItem(LANG_PREF_KEY, lang);
+  updateLangButtons();
+
+  // If a sermon is currently displayed, translate it
+  if (currentSermon && document.getElementById('sermonOutput').classList.contains('visible')) {
+    await translateAndRender();
+  }
+}
+
+// Get translation from cache or call API
+async function getTranslation(sermonId, lang, sermon) {
+  if (lang === 'en') return sermon; // English = original, no translation needed
+
+  const cacheKey = `${CACHE_KEY_BASE}${sermonId}_${lang}`;
+
+  // Check localStorage cache first
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      log('Cache hit', { lang, sermonId });
+      return parsed;
+    }
+  } catch { /* cache miss */ }
+
+  // Not cached — call translation API
+  log('Translating', { lang, sermonId });
+  showTranslatingOverlay(lang);
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tone:       'translation',
+        targetLang: lang,
+        sermon:     sermon,
+      }),
+    });
+
+    if (!response.ok) throw new Error('Translation request failed');
+    const data = await response.json();
+
+    if (data.sermon) {
+      // Cache the translation per device
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(data.sermon));
+      } catch { /* storage full, skip cache */ }
+      return data.sermon;
+    }
+    throw new Error('No sermon in translation response');
+
+  } catch (err) {
+    log('Translation failed, falling back to English', { error: err.message });
+    return sermon; // Graceful fallback to English
+  } finally {
+    hideTranslatingOverlay();
+  }
+}
+
+async function translateAndRender() {
+  const translated = await getTranslation(activeSermonId, currentLang, currentSermon);
+  renderSermon(translated, currentTimeMins, null, currentLang);
+}
+
+function showTranslatingOverlay(lang) {
+  const names = { yo: 'Yoruba', ha: 'Hausa', ig: 'Igbo' };
+  document.getElementById('translatingText').textContent = `Translating to ${names[lang] || lang}…`;
+  document.getElementById('translatingOverlay').classList.add('visible');
+}
+
+function hideTranslatingOverlay() {
+  document.getElementById('translatingOverlay').classList.remove('visible');
+}
+
+function showTranslateStatus(msg) {
+  const el = document.getElementById('translateStatus');
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+// ============================================================
+//  GENERATE SERMON
+// ============================================================
+async function generateSermon() {
+  const title = document.getElementById('sermonTitle').value.trim();
+  if (!title) { showError('Please enter a sermon title or select a suggested topic.'); return; }
+
+  const audience      = document.getElementById('audience').value;
+  const scriptureHint = document.getElementById('scriptureHint').value.trim();
+  const context       = document.getElementById('context').value.trim();
+  currentTimeMins     = timeEnabled
+    ? Math.min(Math.max(parseInt(document.getElementById('timeMinutes').value) || 30, 5), 120)
+    : null;
+
+  hideError();
+  setLoading(true);
+
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), CLIENT_TIMEOUT);
+
+  try {
+    const res = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title, audience, scriptureHint, context,
+        timeMins: currentTimeMins,
+        tone: selectedTone,
+      }),
+    });
+
+    clearTimeout(timer);
+
+    let data;
+    try { data = await res.json(); } catch { throw new Error('Server returned unreadable response.'); }
+    if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
+    if (!data.sermon) throw new Error('Server returned empty sermon.');
+
+    // Store original English sermon
+    currentSermon   = data.sermon;
+    activeSermonId  = Date.now().toString();
+
+    // Save to history (always save English original)
+    const histId = addToHistory(data.sermon.title || title, selectedTone, audience, data.sermon, currentTimeMins, data.model);
+    activeHistoryId = histId;
+    activeSermonId  = histId;
+
+    // Render in current language
+    if (currentLang !== 'en') {
+      const translated = await getTranslation(activeSermonId, currentLang, currentSermon);
+      renderSermon(translated, currentTimeMins, data.model, currentLang);
+    } else {
+      renderSermon(currentSermon, currentTimeMins, data.model, 'en');
+    }
+
+  } catch (err) {
+    clearTimeout(timer);
+    setLoading(false);
+    document.getElementById('formCard').style.display = 'block';
+    if (err.name === 'AbortError') {
+      showError('Request timed out. AI generation can take up to 30 seconds — please try again.');
+    } else {
+      showError('Could not prepare sermon: ' + (err.message || 'Unknown error.'));
+    }
+  }
+}
+
+// ============================================================
+//  HISTORY
+// ============================================================
+function loadHistory() {
+  try { sermonHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { sermonHistory = []; }
+}
+
+function saveHistory() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sermonHistory)); } catch {}
+}
+
+function addToHistory(title, tone, audience, sermonData, timeMins, model) {
+  const entry = {
+    id:       Date.now().toString(),
+    title, tone, audience, timeMins,
+    model:    model || '',
+    date:     new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    timestamp: Date.now(),
+    data:     sermonData,
+  };
+  sermonHistory.unshift(entry);
+  if (sermonHistory.length > 50) sermonHistory = sermonHistory.slice(0, 50);
+  saveHistory();
+  renderHistoryList();
+  updateBadge();
+  return entry.id;
+}
+
+function deleteFromHistory(id, e) {
+  e.stopPropagation();
+  sermonHistory = sermonHistory.filter(s => s.id !== id);
+  saveHistory();
+  if (activeHistoryId === id) activeHistoryId = null;
+  renderHistoryList();
+  updateBadge();
+}
+
+function clearAllHistory() {
+  if (!confirm('Clear all sermon history? This cannot be undone.')) return;
+  sermonHistory = [];
+  activeHistoryId = null;
+  saveHistory();
+  renderHistoryList();
+  updateBadge();
+}
+
+async function loadSermonFromHistory(id) {
+  const entry = sermonHistory.find(s => s.id === id);
+  if (!entry) return;
+  activeHistoryId = id;
+  activeSermonId  = id;
+  currentSermon   = entry.data;
+  currentTimeMins = entry.timeMins;
+  selectedTone    = entry.tone;
+  document.getElementById('sermonTitle').value = entry.title;
+  document.querySelectorAll('.tone-chip').forEach(c => {
+    const t = c.getAttribute('onclick').match(/'([^']+)'\)$/)?.[1] || '';
+    c.classList.toggle('active', t === entry.tone);
+  });
+  renderHistoryList();
+  closeSidebar();
+  setLoading(false);
+  if (currentLang !== 'en') {
+    const translated = await getTranslation(activeSermonId, currentLang, currentSermon);
+    renderSermon(translated, currentTimeMins, entry.model, currentLang);
+  } else {
+    renderSermon(currentSermon, currentTimeMins, entry.model, 'en');
+  }
+}
+
+function filterHistory() {
+  const q = document.getElementById('historySearch').value.toLowerCase();
+  let visible = 0;
+  document.querySelectorAll('.history-item').forEach(el => {
+    const show = el.querySelector('.history-title').textContent.toLowerCase().includes(q);
+    el.style.display = show ? 'block' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('sidebarEmpty').classList.toggle('show', visible === 0 && sermonHistory.length > 0);
+}
+
+function renderHistoryList() {
+  const list  = document.getElementById('historyList');
+  const empty = document.getElementById('sidebarEmpty');
+  document.getElementById('historyCount').textContent = `${sermonHistory.length} SERMON${sermonHistory.length !== 1 ? 'S' : ''}`;
+  list.querySelectorAll('.history-item').forEach(el => el.remove());
+  if (sermonHistory.length === 0) { empty.classList.add('show'); return; }
+  empty.classList.remove('show');
+  sermonHistory.forEach(entry => {
+    const div = document.createElement('div');
+    div.className = `history-item${activeHistoryId === entry.id ? ' active' : ''}`;
+    div.onclick = () => loadSermonFromHistory(entry.id);
+    div.innerHTML = `
+      <div class="history-title">${esc(entry.title)}</div>
+      <div class="history-meta">
+        <span class="history-date">${entry.date}</span>
+        <span class="history-tone">${esc(entry.tone.split(' & ')[0])}</span>
+        ${entry.timeMins ? `<span class="history-tone">⏱ ${entry.timeMins}min</span>` : ''}
+      </div>
+      <button class="history-delete" onclick="deleteFromHistory('${entry.id}',event)">✕</button>`;
+    list.insertBefore(div, empty);
+  });
+}
+
+function updateBadge() {
+  const badge = document.getElementById('historyBadge');
+  const n = sermonHistory.length;
+  badge.textContent = n > 9 ? '9+' : n;
+  badge.classList.toggle('show', n > 0);
+}
+
+// ============================================================
+//  SIDEBAR
+// ============================================================
+function toggleSidebar() {
+  const open = document.getElementById('sidebar').classList.contains('open');
+  document.getElementById('sidebar').classList.toggle('open', !open);
+  document.getElementById('sidebarOverlay').classList.toggle('show', !open);
+  document.getElementById('hamburgerBtn').classList.toggle('open', !open);
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+  document.getElementById('hamburgerBtn').classList.remove('open');
+}
+
+// ============================================================
+//  FORM CONTROLS
+// ============================================================
+function toggleTime() {
+  timeEnabled = !timeEnabled;
+  document.getElementById('timeToggle').classList.toggle('on', timeEnabled);
+  document.getElementById('timeInputWrap').classList.toggle('visible', timeEnabled);
+}
+function selectTone(el, tone) {
+  document.querySelectorAll('.tone-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedTone = tone;
+}
+function suggestTitles() {
+  const box = document.getElementById('suggestionsBox');
+  const list = [...SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 6);
+  box.innerHTML = list.map(s => `
+    <div class="suggestion-item" onclick="pickSuggestion(this)">
+      ${esc(s.title)}<span class="suggestion-category">${esc(s.cat)}</span>
+    </div>`).join('');
+  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+}
+function pickSuggestion(el) {
+  document.getElementById('sermonTitle').value = el.childNodes[0].textContent.trim();
+  document.getElementById('suggestionsBox').style.display = 'none';
+}
+
+// ============================================================
+//  RENDER — language-aware
+// ============================================================
+function renderSermon(s, timeMins, model, lang) {
+  setLoading(false);
+  const out      = document.getElementById('sermonOutput');
+  const ui       = UI_STRINGS[lang] || UI_STRINGS.en;
+  const audience = document.getElementById('audience').value;
+  const total    = s.total_estimated_minutes || timeMins || '~35';
+  const isEn     = lang === 'en';
+  const langLabel = isEn ? '' : `<div class="lang-badge">🇳🇬 ${LANG_CONFIG[lang]?.label}</div>`;
+
+  out.innerHTML = `
+    <div class="sermon-header-card">
+      <h2 class="sermon-title-out">${esc(s.title)}</h2>
+      ${langLabel}
+      ${model ? `<div class="lang-badge" style="background:rgba(26,60,26,0.15);border-color:rgba(26,60,26,0.3);color:#7DC07D">✦ ${esc(model)}</div>` : ''}
+      <div class="verse-card" style="text-align:left;margin-top:16px">
+        <span class="verse-ref">${esc(s.theme_verse?.reference||'')}</span>
+        <span class="verse-text">"${esc(s.theme_verse?.text||'')}"</span>
+      </div>
+      <div class="sermon-meta">
+        ${timeMins ? `<span class="meta-pill">⏱ ~${total} min</span>` : ''}
+        <span class="meta-pill">${esc(audience)}</span>
+        <span class="meta-pill">✦ ${esc(selectedTone)}</span>
+      </div>
+    </div>
+
+    ${sect('s1','icon-wine','✦', ui.intro,       ui.introDesc,       renderIntro(s.introduction, timeMins, ui), true)}
+    ${sect('s2','icon-gold','⊕', ui.context,     ui.contextDesc,     renderContext(s.background_context, timeMins, ui))}
+    ${sect('s3','icon-blue','◈', ui.mainPoints,  `${(s.main_points||[]).length} ${ui.mainPointsDesc}`, renderPoints(s.main_points||[], timeMins, ui))}
+    ${sect('s4','icon-green','✧',ui.supporting,  ui.supportingDesc,  renderVerses(s.supporting_verses||[]))}
+    ${sect('s5','icon-wine','◇', ui.conclusion,  ui.conclusionDesc,  renderConclusion(s.conclusion, timeMins, ui))}
+    ${sect('s6','icon-gold','✝', ui.altarCall,   ui.altarCallDesc,   `<div class="prayer-box sermon-content"><p>${esc(s.altar_call||'')}</p></div>`)}
+    ${sect('s7','icon-blue','✿', ui.prayer,      ui.prayerDesc,      `<div class="prayer-box sermon-content"><p>${esc(s.closing_prayer||'')}</p></div>`)}
+    ${sect('s8','icon-green','◎',ui.notes,       ui.notesDesc,       renderNotes(s.preacher_notes||[]))}
+
+    <div class="action-bar">
+      <button class="action-btn primary" onclick="printSermon()">🖨 ${ui.print}</button>
+      <button class="action-btn ghost"   onclick="copyAll(event)">⎘ ${ui.copy}</button>
+      <button class="action-btn ghost"   id="readAloudBtn" onclick="toggleReadAloud()">🔊 ${ui.readAloud}</button>
+      <button class="action-btn ghost"   id="stopReadingBtn" onclick="stopReading()" style="display:none">⏹ ${ui.stopReading}</button>
+      <button class="action-btn ghost"   onclick="newSermon()">✦ ${ui.newSermon}</button>
+    </div>`;
+
+  stopReading(); // switching/re-rendering a sermon shouldn't leave stale audio queued
+
+  out.classList.add('visible');
+  out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function sect(id, cls, icon, name, desc, body, open=false) {
+  return `<div class="sermon-section">
+    <div class="section-header" onclick="toggleSection('b${id}','t${id}')">
+      <div class="section-icon ${cls}">${icon}</div>
+      <div class="section-title-wrap">
+        <div class="section-name">${name}</div>
+        <div class="section-desc">${desc}</div>
+      </div>
+      <div class="section-toggle${open?' open':''}" id="t${id}">▾</div>
+    </div>
+    <div class="section-body${open?' open':''}" id="b${id}">${body}</div>
+  </div>`;
+}
+function toggleSection(bId, tId) {
+  document.getElementById(bId).classList.toggle('open');
+  document.getElementById(tId).classList.toggle('open');
+}
+function tb(mins) { return mins ? `<div class="time-badge">⏱ ~${mins} min</div>` : ''; }
+function lbl(text, color='var(--gold-light)') {
+  return `<p><strong style="color:${color};font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em">${text}</strong></p>`;
+}
+
+function renderIntro(d, show, ui) {
+  if (!d) return '';
+  return `${show ? tb(d.estimated_minutes) : ''}
+  <div class="sermon-content">
+    ${lbl(ui.hook)}
+    <p>${esc(d.hook||'')}</p>
+    ${lbl(ui.tension)}
+    <p>${esc(d.problem_statement||'')}</p>
+    ${lbl(ui.truth)}
+    <p>${esc(d.thesis||'')}</p>
+  </div>`;
+}
+function renderContext(d, show, ui) {
+  if (!d) return '';
+  return `${show ? tb(d.estimated_minutes) : ''}
+  <div class="sermon-content">
+    ${lbl(ui.historical,'#7BA7D0')}
+    <p>${esc(d.historical||'')}</p>
+    ${lbl(ui.today,'#7BA7D0')}
+    <p>${esc(d.why_it_matters_today||'')}</p>
+  </div>`;
+}
+function renderPoints(pts, show, ui) {
+  if (!pts.length) return '<p>Not available.</p>';
+  return pts.map(pt => `
+    <div class="sermon-point">
+      <span class="point-number">${ui.point} ${pt.number}</span>
+      <div class="point-title">${esc(pt.title||'')}</div>
+      ${show ? tb(pt.estimated_minutes) : ''}
+      <div class="verse-card">
+        <span class="verse-ref">${esc(pt.scripture?.reference||'')}</span>
+        <span class="verse-text">"${esc(pt.scripture?.text||'')}"</span>
+      </div>
+      <div class="sermon-content">
+        <p>${esc(pt.exposition||'').split('\n').join('</p><p>')}</p>
+        <div class="illustration-box">
+          <span class="illustration-label">${ui.illustration}</span>
+          <p style="font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:var(--parchment-dark);line-height:1.75">${esc(pt.illustration||'')}</p>
+        </div>
+        ${lbl(ui.application,'#7DC07D')}
+        <p>${esc(pt.application||'')}</p>
+      </div>
+    </div>`).join('');
+}
+function renderVerses(vs) {
+  if (!vs.length) return '<p>Not available.</p>';
+  return vs.map(v => `
+    <div class="verse-card" style="margin-bottom:14px">
+      <span class="verse-ref">${esc(v.reference||'')}</span>
+      <span class="verse-text">"${esc(v.text||'')}"</span>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;font-family:'Lato',sans-serif">${esc(v.purpose||'')}</p>
+    </div>`).join('');
+}
+function renderConclusion(d, show, ui) {
+  if (!d) return '';
+  return `${show ? tb(d.estimated_minutes) : ''}
+  <div class="sermon-content">
+    ${lbl(ui.summary)}
+    <p>${esc(d.summary||'')}</p>
+    ${lbl(ui.callToAction)}
+    <p>${esc(d.call_to_action||'')}</p>
+    <div class="illustration-box">
+      <span class="illustration-label">${ui.closingIllustration}</span>
+      <p style="font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:var(--parchment-dark);line-height:1.75">${esc(d.closing_illustration||'')}</p>
+    </div>
+  </div>`;
+}
+function renderNotes(notes) {
+  if (!notes.length) return '<p>Not available.</p>';
+  return `<div class="sermon-content">${notes.map((n, i) => `
+    <div style="display:flex;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(201,168,76,0.08)">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:12px;color:var(--gold);flex-shrink:0;margin-top:2px">${i+1}</div>
+      <p style="font-size:15px;line-height:1.7;color:var(--parchment-dark)">${esc(n)}</p>
+    </div>`).join('')}</div>`;
+}
+
+// ============================================================
+//  UTILITIES
+// ============================================================
+function esc(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function log(msg, data={}) { console.log('[Pulpit]', msg, data); }
+function setLoading(on) {
+  document.getElementById('formCard').style.display = on ? 'none' : 'block';
+  document.getElementById('loadingState').classList.toggle('visible', on);
+  if (on) { document.getElementById('sermonOutput').innerHTML = ''; document.getElementById('sermonOutput').classList.remove('visible'); }
+}
+function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = msg; el.classList.add('visible'); }
+function hideError() { document.getElementById('errorMsg').classList.remove('visible'); }
+function newSermon() {
+  stopReading();
+  document.getElementById('sermonOutput').classList.remove('visible');
+  document.getElementById('sermonOutput').innerHTML = '';
+  document.getElementById('formCard').style.display = 'block';
+  activeHistoryId = null;
+  currentSermon = null;
+  renderHistoryList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function copyAll(event) {
+  navigator.clipboard.writeText(document.getElementById('sermonOutput').innerText).then(() => {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    setTimeout(() => btn.innerHTML = orig, 2000);
+  }).catch(() => showError('Could not copy. Try selecting text manually.'));
+}
+function printSermon() { window.print(); }
+
+// ============================================================
+//  START
+// ============================================================
+init();
+</script>
+</body>
+</html>

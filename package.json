@@ -1,0 +1,12 @@
+{
+  "name": "the-pulpit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Pulpit: sermon generation, Bible study, multilingual Scripture support, and evidence-aware Pulpitpedia research.",
+  "scripts": {
+    "test": "node tests/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
