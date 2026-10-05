@@ -22,18 +22,12 @@ for (const file of files) {
   }
 }
 
-const html = await readFile(join(root, "public/index.html"), "utf8");
-const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join("\n");
-const temp = "/tmp/the-pulpit-frontend-smoke.js";
-await import("node:fs/promises").then(fs => fs.writeFile(temp, scripts));
-const frontend = spawnSync(process.execPath, ["--check", temp], { encoding: "utf8" });
-if (frontend.status !== 0) {
-  console.error(frontend.stderr || frontend.stdout);
-  process.exit(1);
-}
-
-if (/gsk-[A-Za-z0-9_-]{10,}|sk-or-v1-[A-Za-z0-9_-]{10,}/.test(html)) {
-  throw new Error("Possible API key found in frontend source.");
+for (const page of ['index.html', 'versiah.html']) {
+  const html = await readFile(join(root, 'public', page), 'utf8');
+  const scripts = [...html.matchAll(/<script(?![^>]*type=["']application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n');
+  const result = spawnSync(process.execPath, ['--check'], { input: scripts, encoding: 'utf8' });
+  if (result.status !== 0) throw new Error(page + ': ' + result.stderr);
+  if (/gsk-[A-Za-z0-9_-]{10,}|sk-or-v1-[A-Za-z0-9_-]{10,}/.test(html)) throw new Error('Possible frontend API key in ' + page);
 }
 
 const widget = await readFile(join(root, "public/versiah-widget.js"), "utf8");

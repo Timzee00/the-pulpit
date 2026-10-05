@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Pulpit — Sermon Helper AI · Versiah</title>
+<title>The Pulpit — Sermons, Bible Study & Versiah</title>
+<meta name="description" content="Prepare sermons, study the Bible, explore Christian history, and ask Versiah Scripture questions. Built in Nigeria by Timzee.">
+<meta property="og:title" content="The Pulpit — Scripture for study, teaching and everyday life">
+<meta property="og:description" content="Sermon preparation, Bible study, Pulpitpedia and the Versiah Scripture companion in one place.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Cinzel:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
@@ -698,7 +703,8 @@ let sermonHistory    = [];
 let activeHistoryId  = null;
 let currentSermon    = null;  // raw English sermon data
 let currentTimeMins  = null;
-let currentLang      = localStorage.getItem(LANG_PREF_KEY) || 'en';
+let currentLang = 'en';
+try { const stored = localStorage.getItem(LANG_PREF_KEY); if (['en','yo','ha','ig'].includes(stored)) currentLang = stored; } catch {}
 let activeSermonId   = null;  // for cache keying
 
 // Read-aloud state
@@ -847,7 +853,8 @@ const PULPITPEDIA = [
 function initPulpitpedia() {
   pediaInitDone = true;
   const cats = ['All', ...new Set(PULPITPEDIA.map(x => x.cat))];
-  document.getElementById('pediaFilters').innerHTML = cats.map(cat => `<button class="pedia-filter${cat === 'All' ? ' active' : ''}" onclick="setPediaCategory(${JSON.stringify(cat)})">${esc(cat)}</button>`).join('');
+  document.getElementById('pediaFilters').innerHTML = cats.map(cat => `<button class="pedia-filter${cat === 'All' ? ' active' : ''}" data-category="${esc(cat)}">${esc(cat)}</button>`).join('');
+  document.querySelectorAll('[data-category]').forEach(btn => btn.addEventListener('click', () => setPediaCategory(btn.dataset.category)));
   renderPediaResults(PULPITPEDIA);
 }
 
@@ -1204,8 +1211,8 @@ function startReading() {
   window.speechSynthesis.cancel();
   if (ttsAudioEl) ttsAudioEl.pause();
 
-  const sermonForLang = currentLang === 'en' ? currentSermon
-    : JSON.parse(localStorage.getItem(`${CACHE_KEY_BASE}${activeSermonId}_${currentLang}`) || 'null') || currentSermon;
+  let sermonForLang = currentSermon;
+  try { if (currentLang !== 'en') sermonForLang = JSON.parse(localStorage.getItem(`${CACHE_KEY_BASE}${activeSermonId}_${currentLang}`) || 'null') || currentSermon; } catch {}
 
   speechChunks     = buildReadableSermon(sermonForLang);
   speechChunkIndex = 0;
@@ -1336,7 +1343,7 @@ function updateLangButtons() {
 async function setLanguage(lang) {
   if (lang === currentLang) return;
   currentLang = lang;
-  localStorage.setItem(LANG_PREF_KEY, lang);
+  try { localStorage.setItem(LANG_PREF_KEY, lang); } catch {}
   updateLangButtons();
 
   // If a sermon is currently displayed, translate it

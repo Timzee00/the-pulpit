@@ -4,7 +4,7 @@
   "private": true,
   "description": "The Pulpit: sermon generation, Bible study, multilingual Scripture support, and evidence-aware Pulpitpedia research.",
   "scripts": {
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/smoke.mjs && node --test tests/versiah.test.cjs"
   },
   "engines": {
     "node": ">=18"

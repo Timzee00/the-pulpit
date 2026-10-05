@@ -240,3 +240,13 @@ Example:
 ```
 
 Replace `YOUR-PULPIT-DOMAIN` with the live Pulpit domain. No AI key is exposed to the embedding site.
+
+## Companion reliability update
+
+Versiah uses the classic Netlify `exports.handler` response contract and reads keys from server environment variables. Conversation saving is opt-in; disabling it deletes the saved local conversation. AI processing still sends messages and recent context to the configured provider. The interface preserves failed drafts and prevents clearing or switching modes while a request is active.
+
+Verified passage text is WEB English even when the AI explanation uses another language. When no directly relevant passage is selected, the companion explains that limitation without substituting unrelated verses. Immediate self-harm support is a fixed English response that remains available when upstream services are unavailable. Detection is limited and does not establish clinical safety.
+
+`npm test` checks both HTML pages, all functions and the widget, plus mocked backend regressions for the Netlify contract, input limits, urgent support, verified evidence and upstream failures. These tests do not establish live AI quality or deployment health.
+
+For a Lagos Life placement, link to the **whole Pulpit homepage**. A placement has not been secured; no affiliation is claimed. Confirm the actual production URL and test real generation, Bible lookup, audio and language responses before promoting it.
