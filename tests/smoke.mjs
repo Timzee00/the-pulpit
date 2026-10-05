@@ -11,6 +11,7 @@ const files = [
   "netlify/functions/pedia-research.js",
   "netlify/functions/text-to-speech.js",
   "netlify/functions/health.js",
+  "netlify/functions/versiah.js",
 ];
 
 for (const file of files) {
@@ -35,4 +36,13 @@ if (/gsk-[A-Za-z0-9_-]{10,}|sk-or-v1-[A-Za-z0-9_-]{10,}/.test(html)) {
   throw new Error("Possible API key found in frontend source.");
 }
 
-console.log(`Smoke test passed: ${files.length} Netlify functions + frontend JavaScript syntax checked.`);
+const widget = await readFile(join(root, "public/versiah-widget.js"), "utf8");
+const widgetTemp = "/tmp/the-pulpit-versiah-widget-smoke.js";
+await import("node:fs/promises").then(fs => fs.writeFile(widgetTemp, widget));
+const widgetCheck = spawnSync(process.execPath, ["--check", widgetTemp], { encoding: "utf8" });
+if (widgetCheck.status !== 0) {
+  console.error(widgetCheck.stderr || widgetCheck.stdout);
+  process.exit(1);
+}
+
+console.log(`Smoke test passed: ${files.length} Netlify functions + frontend JavaScript + Versiah widget syntax checked.`);
