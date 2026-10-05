@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Versiah — a Scripture-grounded AI companion inside The Pulpit. Bring the questions, worries, hopes, and prayers you carry.">
+<title>Versiah — The Pulpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Cinzel:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deep:#0d0a05;
+  --deep-2:#141008;
+  --ink:#21170a;
+  --gold:#c9a84c;
+  --gold-light:#efd58f;
+  --gold-soft:rgba(201,168,76,.16);
+  --wine:#6b1a2a;
+  --wine-light:#a44459;
+  --parchment:#f5edd6;
+  --parchment-dark:#dfd0aa;
+  --muted:#9b895f;
+  --line:rgba(201,168,76,.15);
+  --card:rgba(24,18,8,.86);
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 50% -5%, rgba(201,168,76,.12), transparent 34%),
+    radial-gradient(circle at 100% 70%, rgba(107,26,42,.14), transparent 28%),
+    linear-gradient(160deg,var(--deep),var(--deep-2) 50%,var(--deep));
+  color:var(--parchment);
+  font-family:'Lato',sans-serif;
+  overflow-x:hidden;
+}
+body:before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;opacity:.035;z-index:-1;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:240px;
+}
+a{color:inherit}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.topbar{
+  position:sticky;top:0;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:14px 18px;
+  background:rgba(13,10,5,.86);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(18px);
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand-mark{width:26px;height:32px;position:relative;display:block}
+.brand-mark:before,.brand-mark:after{content:"";position:absolute;background:var(--gold)}
+.brand-mark:before{width:2px;height:30px;left:12px;top:1px}
+.brand-mark:after{width:22px;height:2px;left:2px;top:10px}
+.brand-copy{line-height:1}
+.brand-overline{font:600 9px/1.2 'Cinzel',serif;letter-spacing:.23em;color:var(--muted);text-transform:uppercase}
+.brand-name{font:700 13px/1.2 'Cinzel',serif;letter-spacing:.1em;color:var(--gold-light)}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.ghost-btn,.solid-btn,.chip{
+  border-radius:999px;border:1px solid var(--line);
+  background:transparent;color:var(--muted);
+  transition:.2s ease;
+}
+.ghost-btn{padding:8px 12px;font-size:11px}
+.ghost-btn:hover,.chip:hover{border-color:var(--gold);color:var(--gold-light)}
+.solid-btn{
+  padding:11px 16px;
+  background:linear-gradient(135deg,#8f6c17,var(--gold));
+  border-color:var(--gold);
+  color:var(--deep);
+  font:700 11px 'Cinzel',serif;
+  letter-spacing:.12em;text-transform:uppercase;
+}
+.page{max-width:1160px;margin:0 auto;padding:36px 18px 70px}
+.hero{
+  display:grid;grid-template-columns:1.3fr .7fr;gap:18px;
+  margin-bottom:18px;
+}
+.hero-main,.hero-side,.composer-card{
+  background:linear-gradient(145deg,rgba(30,22,10,.94),rgba(19,14,7,.96));
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:0 20px 70px rgba(0,0,0,.28);
+}
+.hero-main{padding:38px}
+.kicker{
+  font:600 10px 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:18px;
+}
+h1{
+  margin:0;
+  font:600 clamp(42px,6vw,76px)/.95 'Cormorant Garamond',serif;
+  color:var(--parchment);
+  max-width:800px;
+}
+.hero-main p{
+  margin:18px 0 0;
+  max-width:720px;
+  font:400 clamp(19px,2.2vw,25px)/1.42 'Cormorant Garamond',serif;
+  color:var(--parchment-dark);
+}
+.hero-note{
+  margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
+  max-width:740px;
+  color:var(--muted);font-size:12px;line-height:1.7;
+}
+.hero-side{padding:26px;display:flex;flex-direction:column;justify-content:space-between;gap:24px}
+.side-title{font:500 12px 'Cinzel',serif;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-light)}
+.side-copy{font:400 18px/1.45 'Cormorant Garamond',serif;color:var(--parchment-dark)}
+.trust{display:grid;gap:10px}
+.trust-item{padding:12px 14px;border:1px solid rgba(201,168,76,.1);border-radius:10px;background:rgba(201,168,76,.035)}
+.trust-item strong{display:block;color:var(--parchment);font-size:12px;margin-bottom:3px}
+.trust-item span{color:var(--muted);font-size:11px;line-height:1.5}
+.toolbar{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.tabs,.lang-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:8px 12px;font-size:11px}
+.chip.active{background:var(--gold-soft);color:var(--gold-light);border-color:var(--gold)}
+.conversation{
+  min-height:320px;max-height:none;
+  display:flex;flex-direction:column;gap:14px;
+  margin-bottom:14px;
+}
+.empty-state{
+  padding:30px 24px;border:1px dashed rgba(201,168,76,.2);border-radius:var(--radius);
+  background:rgba(201,168,76,.025);
+}
+.empty-state h2{margin:0 0 8px;font:500 27px 'Cormorant Garamond',serif;color:var(--parchment)}
+.empty-state p{margin:0;color:var(--muted);line-height:1.7;font-size:13px;max-width:680px}
+.quick-prompts{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.quick-prompts button{
+  border:1px solid rgba(201,168,76,.16);background:rgba(201,168,76,.04);
+  color:var(--parchment-dark);padding:10px 12px;border-radius:10px;font-size:12px;
+}
+.quick-prompts button:hover{border-color:var(--gold);color:var(--gold-light)}
+.message-row{display:flex}
+.message-row.user{justify-content:flex-end}
+.message{
+  width:min(840px,92%);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px 17px;
+  background:rgba(24,18,8,.83);
+}
+.user .message{
+  background:linear-gradient(145deg,rgba(107,26,42,.2),rgba(24,18,8,.9));
+  border-color:rgba(107,26,42,.35);
+}
+.message-label{font:600 9px 'Cinzel',serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.user .message-label{color:#cc8c9c}
+.message-text{font:400 18px/1.66 'Cormorant Garamond',serif;color:var(--parchment);white-space:pre-wrap;overflow-wrap:anywhere}
+.assistant-grid{display:grid;gap:12px}
+.reflection,.prayer{
+  padding:14px 15px;border-radius:12px;
+  background:rgba(201,168,76,.045);border:1px solid rgba(201,168,76,.11);
+}
+.reflection strong,.prayer strong{
+  display:block;margin-bottom:6px;font:600 10px 'Cinzel',serif;letter-spacing:.15em;text-transform:uppercase;color:var(--gold)
+}
+.reflection p,.prayer p{margin:0;color:var(--parchment-dark);font:400 16px/1.6 'Cormorant Garamond',serif}
+.scriptures{
+  display:grid;gap:9px;margin-top:3px
+}
+.scripture{
+  padding:14px 15px;border-left:3px solid var(--gold);
+  border-radius:0 10px 10px 0;
+  background:rgba(201,168,76,.055);
+}
+.scripture-ref{font:600 11px 'Cinzel',serif;letter-spacing:.12em;color:var(--gold-light);margin-bottom:7px}
+.scripture-text{font:400 16px/1.7 'Cormorant Garamond',serif;color:var(--parchment)}
+.scripture-credit{font-size:9px;color:var(--muted);margin-top:8px}
+.note{font-size:11px;line-height:1.6;color:var(--muted);padding:11px 13px;border:1px solid rgba(201,168,76,.08);border-radius:10px}
+.composer-card{position:sticky;bottom:12px;padding:12px}
+.composer{
+  display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end
+}
+textarea{
+  width:100%;min-height:64px;max-height:180px;resize:vertical;
+  background:rgba(201,168,76,.035);border:1px solid rgba(201,168,76,.16);
+  border-radius:12px;padding:13px 14px;color:var(--parchment);
+  outline:none;font-size:15px;line-height:1.5;
+}
+textarea::placeholder{color:rgba(201,168,76,.35);font-style:italic}
+textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,168,76,.06)}
+.composer-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.hint{font-size:10px;color:rgba(201,168,76,.42);line-height:1.4}
+.send{min-width:118px;height:64px}
+.typing{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+.typing span{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:bounce 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{opacity:.2;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.error{
+  margin-top:10px;padding:12px 14px;border:1px solid rgba(164,68,89,.4);
+  background:rgba(107,26,42,.15);border-radius:10px;color:#e1a7b5;font-size:12px;line-height:1.5
+}
+.footer{
+  margin-top:30px;text-align:center;color:rgba(201,168,76,.3);
+  font:italic 14px 'Cormorant Garamond',serif
+}
+.hidden{display:none!important}
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr}
+  .hero-side{display:block}
+  .trust{grid-template-columns:repeat(3,1fr);margin-top:18px}
+}
+@media(max-width:620px){
+  .page{padding:22px 12px 50px}
+  .topbar{padding:11px 12px}
+  .top-actions .ghost-btn{display:none}
+  .hero-main{padding:26px 20px}
+  .hero-side{padding:20px}
+  .trust{grid-template-columns:1fr}
+  h1{font-size:48px}
+  .hero-main p{font-size:20px}
+  .message{width:100%}
+  .composer{grid-template-columns:1fr}
+  .send{width:100%;height:50px}
+  .composer-card{position:static}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-copy">
+      <span class="brand-overline">The Pulpit</span>
+      <span class="brand-name">Versiah</span>
+    </span>
+  </a>
+  <div class="top-actions">
+    <button class="ghost-btn" id="clearBtn">New conversation</button>
+    <a class="ghost-btn" href="/">Back to Pulpit</a>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div class="hero-main">
+      <div class="kicker">A Scripture companion</div>
+      <h1>What are you carrying tonight?</h1>
+      <p>Tell Versiah the question, fear, hope, doubt, or prayer you have been holding onto. It will look for what Scripture actually says and help you sit with it.</p>
+      <div class="hero-note">Versiah is AI. It can help you explore Scripture, but it is not God, a pastor, a prophet, or a replacement for human care. Conversation history is stored only in this browser; your message is still sent to the secure Pulpit server so the AI can respond.</div>
+    </div>
+    <aside class="hero-side">
+      <div>
+        <div class="side-title">Scripture first</div>
+        <div class="side-copy">The answer is generated from verified Bible passages rather than asking the model to invent verses.</div>
+      </div>
+      <div class="trust">
+        <div class="trust-item"><strong>Verified passages</strong><span>References are checked before they are shown.</span></div>
+        <div class="trust-item"><strong>Private history</strong><span>Your saved conversation stays in this browser.</span></div>
+        <div class="trust-item"><strong>Human boundaries</strong><span>High-stakes situations are directed toward appropriate human support.</span></div>
+      </div>
+    </aside>
+  </section>
+
+  <section>
+    <div class="toolbar">
+      <div class="tabs" role="tablist" aria-label="Versiah mode">
+        <button class="chip active" data-mode="talk">Talk</button>
+        <button class="chip" data-mode="study">Study Scripture</button>
+        <button class="chip" data-mode="pray">Pray</button>
+      </div>
+      <div class="lang-tabs" role="tablist" aria-label="Answer language">
+        <button class="chip active" data-lang="en">English</button>
+        <button class="chip" data-lang="yo">Yoruba</button>
+        <button class="chip" data-lang="ha">Hausa</button>
+        <button class="chip" data-lang="ig">Igbo</button>
+      </div>
+    </div>
+
+    <div id="conversation" class="conversation"></div>
+
+    <div class="composer-card">
+      <div class="composer">
+        <textarea id="message" maxlength="2600" aria-label="Message Versiah" placeholder="Tell Versiah what is on your mind…"></textarea>
+        <button class="solid-btn send" id="sendBtn">Ask Versiah</button>
+      </div>
+      <div class="composer-footer">
+        <div class="hint">Enter to send · Shift+Enter for a new line</div>
+        <div class="hint" id="count">0 / 2600</div>
+      </div>
+      <div class="error hidden" id="error"></div>
+    </div>
+  </section>
+
+  <div class="footer">“Your word is a lamp to my feet, and a light for my path.” — Psalm 119:105</div>
+</main>
+
+<script>
+const API = "/api/versiah";
+const STORAGE = "pulpit_versiah_conversation_v1";
+const SETTINGS = "pulpit_versiah_settings_v1";
+const state = {
+  messages: [],
+  mode: "talk",
+  language: "en",
+  busy: false,
+};
+
+const conversation = document.getElementById("conversation");
+const input = document.getElementById("message");
+const sendBtn = document.getElementById("sendBtn");
+const clearBtn = document.getElementById("clearBtn");
+const errorBox = document.getElementById("error");
+const count = document.getElementById("count");
+const source = new URLSearchParams(location.search).get("source") || "";
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE, JSON.stringify(state.messages.slice(-30)));
+    localStorage.setItem(SETTINGS, JSON.stringify({ mode: state.mode, language: state.language }));
+  } catch {}
+}
+
+function loadState() {
+  try {
+    const messages = JSON.parse(localStorage.getItem(STORAGE) || "[]");
+    const settings = JSON.parse(localStorage.getItem(SETTINGS) || "{}");
+    if (Array.isArray(messages)) state.messages = messages.slice(-30);
+    if (["talk","study","pray"].includes(settings.mode)) state.mode = settings.mode;
+    if (["en","yo","ha","ig"].includes(settings.language)) state.language = settings.language;
+  } catch {}
+}
+
+function renderEmpty() {
+  const featureLine = source === "lagoslife"
+    ? "Opened from a featured LagosLife placement."
+    : "You can start anywhere. No perfect wording required.";
+
+  conversation.innerHTML = [
+    '<div class="empty-state">',
+    '<h2>You do not have to phrase it perfectly.</h2>',
+    '<p>' + escapeHtml(featureLine) + ' Tell Versiah what is actually on your mind, and it will search for Scripture that speaks to the question.</p>',
+    '<div class="quick-prompts">',
+    '<button data-prompt="I feel anxious and I do not know what to do.">I feel anxious</button>',
+    '<button data-prompt="How do I forgive someone who hurt me?">Help me forgive</button>',
+    '<button data-prompt="What does Scripture say about purpose and direction?">What is my purpose?</button>',
+    '<button data-prompt="I want to pray, but I do not know what to say.">Help me pray</button>',
+    '</div>',
+    '</div>'
+  ].join("");
+  conversation.querySelectorAll("[data-prompt]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      input.value = btn.getAttribute("data-prompt") || "";
+      updateCount();
+      input.focus();
+    });
+  });
+}
+
+function renderMessages() {
+  if (!state.messages.length) {
+    renderEmpty();
+    return;
+  }
+
+  conversation.innerHTML = state.messages.map(function(item) {
+    if (item.role === "user") {
+      return '<div class="message-row user"><article class="message"><div class="message-label">You</div><div class="message-text">' +
+        escapeHtml(item.text) + '</div></article></div>';
+    }
+
+    const payload = item.data || {};
+    const scriptures = Array.isArray(payload.scriptures) ? payload.scriptures : [];
+    const scriptureHtml = scriptures.map(function(s) {
+      const verseHtml = Array.isArray(s.verses) ? s.verses.map(function(v) {
+        return (v.verse ? '<span class="scripture-ref">Verse ' + escapeHtml(v.verse) + '</span> ' : "") +
+          escapeHtml(v.text || "");
+      }).join("<br>") : escapeHtml(s.text || "");
+
+      return '<div class="scripture"><div class="scripture-ref">' + escapeHtml(s.reference || "") + '</div>' +
+        '<div class="scripture-text">' + verseHtml + '</div>' +
+        '<div class="scripture-credit">World English Bible (WEB)</div></div>';
+    }).join("");
+
+    let extra = "";
+    if (payload.reflection) {
+      extra += '<div class="reflection"><strong>Carry this with you</strong><p>' + escapeHtml(payload.reflection) + '</p></div>';
+    }
+    if (payload.prayer) {
+      extra += '<div class="prayer"><strong>A prayer you may pray</strong><p>' + escapeHtml(payload.prayer) + '</p></div>';
+    }
+    if (payload.note) {
+      extra += '<div class="note">' + escapeHtml(payload.note) + '</div>';
+    }
+
+    return '<div class="message-row"><article class="message"><div class="message-label">Versiah</div>' +
+      '<div class="message-text">' + escapeHtml(payload.answer || item.text || "") + '</div>' +
+      (extra ? '<div class="assistant-grid">' + extra + '</div>' : '') +
+      (scriptureHtml ? '<div class="scriptures">' + scriptureHtml + '</div>' : '') +
+      '</article></div>';
+  }).join("");
+
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+}
+
+function setActiveButtons() {
+  document.querySelectorAll("[data-mode]").forEach(function(btn){
+    btn.classList.toggle("active", btn.getAttribute("data-mode") === state.mode);
+  });
+  document.querySelectorAll("[data-lang]").forEach(function(btn){
+    btn.classList.toggle("active", btn.getAttribute("data-lang") === state.language);
+  });
+}
+
+function setError(message) {
+  errorBox.textContent = message || "";
+  errorBox.classList.toggle("hidden", !message);
+}
+
+function updateCount() {
+  count.textContent = input.value.length + " / 2600";
+}
+
+function addTyping() {
+  const row = document.createElement("div");
+  row.className = "message-row";
+  row.id = "typingRow";
+  row.innerHTML = '<article class="message"><div class="message-label">Versiah</div><div class="typing"><span></span><span></span><span></span> Looking through Scripture…</div></article>';
+  conversation.appendChild(row);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+}
+
+function removeTyping() {
+  const row = document.getElementById("typingRow");
+  if (row) row.remove();
+}
+
+function setBusy(busy) {
+  state.busy = busy;
+  sendBtn.disabled = busy;
+  input.disabled = busy;
+  sendBtn.textContent = busy ? "Searching…" : "Ask Versiah";
+}
+
+async function sendMessage() {
+  if (state.busy) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  setError("");
+  state.messages.push({ role: "user", text });
+  saveState();
+  input.value = "";
+  updateCount();
+  renderMessages();
+  addTyping();
+  setBusy(true);
+
+  try {
+    const history = state.messages.slice(-9).map(function(item){
+      return { role: item.role, text: item.role === "user" ? item.text : (item.data && item.data.answer) || item.text };
+    });
+
+    const response = await fetch(API, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        mode: state.mode,
+        language: state.language,
+        history: history,
+      }),
+    });
+
+    const data = await response.json().catch(function(){ return {}; });
+    if (!response.ok) throw new Error(data.error || "Versiah could not answer right now.");
+
+    state.messages.push({
+      role: "assistant",
+      text: data.answer || "",
+      data: data,
+    });
+    saveState();
+    removeTyping();
+    renderMessages();
+  } catch (error) {
+    removeTyping();
+    state.messages.pop();
+    saveState();
+    renderMessages();
+    setError(error && error.message ? error.message : "Something went wrong. Please try again.");
+  } finally {
+    setBusy(false);
+    input.focus();
+  }
+}
+
+function newConversation() {
+  if (state.messages.length && !confirm("Start a new Versiah conversation?")) return;
+  state.messages = [];
+  saveState();
+  setError("");
+  renderMessages();
+  input.value = "";
+  updateCount();
+}
+
+document.querySelectorAll("[data-mode]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    state.mode = btn.getAttribute("data-mode");
+    setActiveButtons();
+    saveState();
+    input.focus();
+  });
+});
+
+document.querySelectorAll("[data-lang]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    state.language = btn.getAttribute("data-lang");
+    setActiveButtons();
+    saveState();
+    input.focus();
+  });
+});
+
+sendBtn.addEventListener("click", sendMessage);
+clearBtn.addEventListener("click", newConversation);
+input.addEventListener("input", updateCount);
+input.addEventListener("keydown", function(event){
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+});
+
+loadState();
+setActiveButtons();
+updateCount();
+renderMessages();
+</script>
+</body>
+</html>

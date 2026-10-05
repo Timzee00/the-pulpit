@@ -44,6 +44,8 @@
   # Set to 26 for Netlify Starter, increase if on Pro plan
   [functions."generate-sermon"]
     timeout = 26
+  [functions."versiah"]
+    timeout = 26
   [functions."text-to-speech"]
     timeout = 26
 
