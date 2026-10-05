@@ -1,3 +1,4 @@
+import { protect } from './access.mjs';
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 const WIKI_API = "https://en.wikipedia.org/w/api.php";
@@ -94,9 +95,10 @@ async function synthesize(query, sources) {
 
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(12000),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: process.env.PULPITPEDIA_RESEARCH_MODEL || "openai/gpt-4.1-mini",
+      model: process.env.PULPITPEDIA_RESEARCH_MODEL || "openrouter/free",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1,
       max_tokens: 900,
@@ -118,9 +120,11 @@ async function synthesize(query, sources) {
   }
 }
 
-exports.handler = async (event) => {
+const run = async (event) => {
   if (event.httpMethod === "OPTIONS") return respond(204, {});
   if (event.httpMethod !== "GET") return respond(405, { error: "Method not allowed." });
+  const denied = await protect(event, { cost: 1 });
+  if (denied) return denied;
   const q = String(event.queryStringParameters?.q || "").trim().slice(0, 160);
   if (!q) return respond(400, { error: "A research topic is required." });
 
@@ -132,7 +136,7 @@ exports.handler = async (event) => {
     const loc = settled[1].status === "fulfilled" ? settled[1].value : [];
     const archive = settled[2].status === "fulfilled" ? settled[2].value : [];
     const seen = new Set();
-    const sources = [...wiki, ...loc, ...archive].filter(s => s.url && !seen.has(s.url) && seen.add(s.url)).slice(0, 10);
+    const sources = [...wiki, ...loc, ...archive].filter(s => /^https?:\/\//i.test(s.url || "") && !seen.has(s.url) && seen.add(s.url)).slice(0, 10);
     const answer = await synthesize(q, sources).catch(err => {
       console.error("[pedia-research] synthesis:", err.message);
       return null;
@@ -143,6 +147,7 @@ exports.handler = async (event) => {
       sources,
       methodology: "External source discovery from Wikimedia, Library of Congress, and Internet Archive; synthesis is constrained to returned source descriptions and explicitly labels uncertainty.",
     };
+    if (researchCache.size >= 100) researchCache.delete(researchCache.keys().next().value);
     researchCache.set(q.toLowerCase(), { value, at: Date.now() });
     return respond(200, value);
   } catch (err) {
@@ -150,3 +155,6 @@ exports.handler = async (event) => {
     return respond(502, { error: "Research sources are temporarily unavailable." });
   }
 };
+
+export {run};
+export default {run};

@@ -1,3 +1,4 @@
+import { protect } from './access.mjs';
 // ============================================================
 //  The Pulpit - Sermon Helper AI
 //  Netlify Function: generate-sermon.js | Version 6.3
@@ -31,8 +32,8 @@ const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const BIBLE_API_BASE      = "https://bible-api.com";
 const ALLOWED_ORIGIN      = process.env.ALLOWED_ORIGIN || "*";
 
-// Netlify's function hard-timeout is 26s (see netlify.toml). Every retry/
-// fallback loop below must fit inside that with room to spare, or Netlify
+// The application uses a bounded request budget. Every retry/
+// fallback loop must leave room for Scripture enrichment, or Netlify
 // kills the whole function and the caller gets a bare platform 502 instead
 // of our own JSON error response.
 const FUNCTION_BUDGET_MS = 22000; // total wall-clock budget for all attempts combined
@@ -44,24 +45,12 @@ const RETRY_DELAY_MS     = 1200;
 //  GROQ FREE MODELS — confirmed working May 2026
 //  Ordered by quality for sermon writing
 // -----------------------------------------------------------
-const GROQ_MODELS = [
-  "llama-3.3-70b-versatile",   // Best quality, great for long JSON
-  "qwen-qwq-32b",              // Strong reasoning model
-  "llama-4-scout-17b-16e-instruct", // Fast, multimodal capable
-  "mistral-saba-24b",          // Good multilingual support
-  "llama-3.1-8b-instant",      // Fastest, last resort
-];
+const GROQ_MODELS = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
 
 // -----------------------------------------------------------
 //  OPENROUTER FREE MODELS — fallback pool
 // -----------------------------------------------------------
-const OPENROUTER_MODELS = [
-  "openrouter/free",                                // Auto-picks best available
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-  "meta-llama/llama-3.2-3b-instruct:free",
-];
+const OPENROUTER_MODELS = ["openrouter/free"];
 
 // -----------------------------------------------------------
 //  MULTI-LANGUAGE BIBLE VERSES via API.Bible (scripture.api.bible,
@@ -173,17 +162,9 @@ function buildProviders(groqKey, openrouterKey, groqModels = GROQ_MODELS, openro
 //  sentence for these languages, so they're excluded here even
 //  though they're fine (and fast) for English sermon generation.
 // -----------------------------------------------------------
-const TRANSLATION_GROQ_MODELS = [
-  "llama-3.3-70b-versatile",
-  "qwen-qwq-32b",
-  "mistral-saba-24b", // decent multilingual support, kept as fallback
-];
+const TRANSLATION_GROQ_MODELS = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"];
 
-const TRANSLATION_OPENROUTER_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-  "openrouter/free",
-];
+const TRANSLATION_OPENROUTER_MODELS = ["openrouter/free"];
 
 // ============================================================
 //  LOGGING
@@ -258,7 +239,7 @@ async function resolveBibleId(lang) {
   if (configured) return configured;
   if (bibleIdCache.has(lang)) return bibleIdCache.get(lang);
 
-  const apiKey = process.env.BIBLE_API_KEY;
+  const apiKey = process.env.BIBLE_LICENSE_CONFIRMED === "true" ? process.env.BIBLE_API_KEY : "";
   const iso3 = BIBLE_ISO3_BY_LANG[lang];
   if (!apiKey || !iso3) return null;
 
@@ -289,7 +270,7 @@ async function resolveBibleId(lang) {
 }
 
 async function fetchVerseInLanguage(reference, lang) {
-  const apiKey = process.env.BIBLE_API_KEY;
+  const apiKey = process.env.BIBLE_LICENSE_CONFIRMED === "true" ? process.env.BIBLE_API_KEY : "";
   if (!apiKey) return null; // no key configured — caller falls back to AI's own translation
 
   const bibleId = await resolveBibleId(lang);
@@ -773,14 +754,14 @@ async function handleTranslate(body, groqKey, openrouterKey) {
   log.error("All providers exhausted (translation)", { error: lastError?.message });
   return respond(502, {
     error:  "Translation is currently unavailable. Please try again in a moment.",
-    detail: lastError?.message || "Unknown error",
+    
   });
 }
 
 // ============================================================
 //  MAIN HANDLER
 // ============================================================
-exports.handler = async (event) => {
+const run = async (event) => {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: cors(), body: "" };
   }
@@ -788,6 +769,8 @@ exports.handler = async (event) => {
     return respond(405, { error: "Method not allowed." });
   }
 
+  const denied = await protect(event, { cost: 3 });
+  if (denied) return denied;
   const groqKey       = process.env.GROQ_API_KEY;
   const openrouterKey = process.env.OPENROUTER_API_KEY;
 
@@ -809,6 +792,8 @@ exports.handler = async (event) => {
   // with their own prompt and verse lookup instead of reusing the
   // sermon-generation path (previously done by stuffing the whole
   // sermon into scriptureHint, which produced unreliable translations).
+  if (!body || Array.isArray(body)) return respond(400, {error:"A JSON object is required."});
+  if (["title","tone","audience","scriptureHint","context"].some(key => body[key] !== undefined && typeof body[key] !== "string")) return respond(400,{error:"Invalid text field."});
   if (body.tone === "translation") {
     return handleTranslate(body, groqKey, openrouterKey);
   }
@@ -829,7 +814,7 @@ exports.handler = async (event) => {
       : null,
   };
 
-  log.info("Request received", { title: input.title, tone: input.tone });
+  log.info("Request received");
 
   const providers   = buildProviders(groqKey, openrouterKey);
   const messages    = buildMessages(input);
@@ -849,7 +834,7 @@ exports.handler = async (event) => {
       const parsed = parseJSON(raw);
 
       if (!parsed) {
-        log.warn("Could not parse JSON", { provider: provider.name, preview: raw.slice(0, 200) });
+        log.warn("Could not parse JSON", { provider: provider.name,  });
         lastError = new Error(`Bad JSON from ${provider.name}`);
         continue;
       }
@@ -861,7 +846,7 @@ exports.handler = async (event) => {
       }
 
       const enriched = await enrichVerses(parsed);
-      log.info("Sermon complete", { provider: provider.name, title: enriched.title });
+      log.info("Sermon complete", { provider: provider.name });
       return respond(200, { sermon: enriched, model: provider.name });
 
     } catch (err) {
@@ -873,6 +858,9 @@ exports.handler = async (event) => {
   log.error("All providers exhausted", { error: lastError?.message });
   return respond(502, {
     error:  "All AI providers are currently unavailable. Please try again in a moment.",
-    detail: lastError?.message || "Unknown error",
+    
   });
 };
+
+export {run};
+export default {run};

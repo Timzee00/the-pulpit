@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Versiah — a Scripture-grounded AI companion inside The Pulpit. Bring the questions, worries, hopes, and prayers you carry.">
 <title>Versiah — The Pulpit</title>
+<meta property="og:title" content="Versiah — Ask Scripture with The Pulpit">
+<meta property="og:description" content="Bring your questions, hopes and prayers. Explore verified Bible passages with a Scripture companion.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Cinzel:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
@@ -216,7 +220,7 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
 @media(max-width:620px){
   .page{padding:22px 12px 50px}
   .topbar{padding:11px 12px}
-  .top-actions .ghost-btn{display:none}
+  .top-actions{flex-wrap:wrap}.top-actions .ghost-btn{font-size:10px;padding:8px}
   .hero-main{padding:26px 20px}
   .hero-side{padding:20px}
   .trust{grid-template-columns:1fr}
@@ -227,7 +231,10 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
   .send{width:100%;height:50px}
   .composer-card{position:static}
 }
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold-light);outline-offset:4px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important}}
 </style>
+<script src="/access.js" defer></script>
 </head>
 <body>
 <header class="topbar">
@@ -239,6 +246,7 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
     </span>
   </a>
   <div class="top-actions">
+    <button class="ghost-btn" id="exportBtn">Export conversation</button>
     <button class="ghost-btn" id="clearBtn">New conversation</button>
     <a class="ghost-btn" href="/">Back to Pulpit</a>
   </div>
@@ -250,16 +258,16 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
       <div class="kicker">A Scripture companion</div>
       <h1>What are you carrying tonight?</h1>
       <p>Tell Versiah the question, fear, hope, doubt, or prayer you have been holding onto. It will look for what Scripture actually says and help you sit with it.</p>
-      <div class="hero-note">Versiah is AI. It can help you explore Scripture, but it is not God, a pastor, a prophet, or a replacement for human care. Conversation history is stored only in this browser; your message is still sent to the secure Pulpit server so the AI can respond.</div>
+      <div class="hero-note">Versiah is AI. It can help you explore Scripture, but it is not God, a pastor, a prophet, or a replacement for human care. Saving conversation history on this device is optional. Messages and recent context are sent through The Pulpit to its AI providers. Avoid sharing passwords or sensitive identifying details.</div>
     </div>
     <aside class="hero-side">
       <div>
         <div class="side-title">Scripture first</div>
-        <div class="side-copy">The answer is generated from verified Bible passages rather than asking the model to invent verses.</div>
+        <div class="side-copy">Passage cards contain retrieved Bible text. The explanation is AI-generated and can be mistaken; read the passages in context.</div>
       </div>
       <div class="trust">
         <div class="trust-item"><strong>Verified passages</strong><span>References are checked before they are shown.</span></div>
-        <div class="trust-item"><strong>Private history</strong><span>Your saved conversation stays in this browser.</span></div>
+        <div class="trust-item"><strong>Private history</strong><span>Saving is optional. AI providers process messages to answer.</span></div>
         <div class="trust-item"><strong>Human boundaries</strong><span>High-stakes situations are directed toward appropriate human support.</span></div>
       </div>
     </aside>
@@ -267,12 +275,12 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
 
   <section>
     <div class="toolbar">
-      <div class="tabs" role="tablist" aria-label="Versiah mode">
+      <div class="tabs" role="group" aria-label="Versiah mode">
         <button class="chip active" data-mode="talk">Talk</button>
         <button class="chip" data-mode="study">Study Scripture</button>
         <button class="chip" data-mode="pray">Pray</button>
       </div>
-      <div class="lang-tabs" role="tablist" aria-label="Answer language">
+      <div class="lang-tabs" role="group" aria-label="Answer language">
         <button class="chip active" data-lang="en">English</button>
         <button class="chip" data-lang="yo">Yoruba</button>
         <button class="chip" data-lang="ha">Hausa</button>
@@ -280,7 +288,8 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
       </div>
     </div>
 
-    <div id="conversation" class="conversation"></div>
+    <div id="conversation" class="conversation" role="log" aria-label="Conversation" aria-live="polite"></div>
+    <label class="hint"><input type="checkbox" id="rememberHistory"> Save this conversation on this device</label>
 
     <div class="composer-card">
       <div class="composer">
@@ -291,7 +300,7 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
         <div class="hint">Enter to send · Shift+Enter for a new line</div>
         <div class="hint" id="count">0 / 2600</div>
       </div>
-      <div class="error hidden" id="error"></div>
+      <div class="error hidden" id="error" role="alert"></div>
     </div>
   </section>
 
@@ -307,6 +316,7 @@ const state = {
   mode: "talk",
   language: "en",
   busy: false,
+  remember: false,
 };
 
 const conversation = document.getElementById("conversation");
@@ -315,6 +325,8 @@ const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const errorBox = document.getElementById("error");
 const count = document.getElementById("count");
+const rememberHistory = document.getElementById("rememberHistory");
+const exportBtn = document.getElementById("exportBtn");
 const source = new URLSearchParams(location.search).get("source") || "";
 
 function escapeHtml(value) {
@@ -327,9 +339,11 @@ function escapeHtml(value) {
 }
 
 function saveState() {
+  state.messages = state.messages.slice(-30);
   try {
-    localStorage.setItem(STORAGE, JSON.stringify(state.messages.slice(-30)));
-    localStorage.setItem(SETTINGS, JSON.stringify({ mode: state.mode, language: state.language }));
+    if (state.remember) localStorage.setItem(STORAGE, JSON.stringify(state.messages.slice(-30)));
+    else localStorage.removeItem(STORAGE);
+    localStorage.setItem(SETTINGS, JSON.stringify({ mode: state.mode, language: state.language, remember: state.remember }));
   } catch {}
 }
 
@@ -337,15 +351,18 @@ function loadState() {
   try {
     const messages = JSON.parse(localStorage.getItem(STORAGE) || "[]");
     const settings = JSON.parse(localStorage.getItem(SETTINGS) || "{}");
-    if (Array.isArray(messages)) state.messages = messages.slice(-30);
-    if (["talk","study","pray"].includes(settings.mode)) state.mode = settings.mode;
-    if (["en","yo","ha","ig"].includes(settings.language)) state.language = settings.language;
+    state.remember = settings && settings.remember === true;
+    if (state.remember && Array.isArray(messages)) state.messages = messages.filter(item => item && ["user", "assistant"].includes(item.role) && typeof item.text === "string").slice(-30);
+    if (!state.remember) localStorage.removeItem(STORAGE);
+    rememberHistory.checked = state.remember;
+    if (settings && ["talk","study","pray"].includes(settings.mode)) state.mode = settings.mode;
+    if (settings && ["en","yo","ha","ig"].includes(settings.language)) state.language = settings.language;
   } catch {}
 }
 
 function renderEmpty() {
   const featureLine = source === "lagoslife"
-    ? "Opened from a featured LagosLife placement."
+    ? "Welcome. Explore The Pulpit’s Scripture companion."
     : "You can start anywhere. No perfect wording required.";
 
   conversation.innerHTML = [
@@ -382,9 +399,9 @@ function renderMessages() {
     }
 
     const payload = item.data || {};
-    const scriptures = Array.isArray(payload.scriptures) ? payload.scriptures : [];
+    const scriptures = Array.isArray(payload.scriptures) ? payload.scriptures.filter(s => s && typeof s === "object") : [];
     const scriptureHtml = scriptures.map(function(s) {
-      const verseHtml = Array.isArray(s.verses) ? s.verses.map(function(v) {
+      const verseHtml = Array.isArray(s.verses) ? s.verses.filter(v => v && typeof v === "object").map(function(v) {
         return (v.verse ? '<span class="scripture-ref">Verse ' + escapeHtml(v.verse) + '</span> ' : "") +
           escapeHtml(v.text || "");
       }).join("<br>") : escapeHtml(s.text || "");
@@ -395,6 +412,8 @@ function renderMessages() {
     }).join("");
 
     let extra = "";
+    if (Array.isArray(payload.citations) && payload.citations.length) extra += '<div class="note">Based on: ' + payload.citations.map(escapeHtml).join(' · ') + '</div>';
+    if (Array.isArray(payload.plan) && payload.plan.length) extra += '<div class="reflection"><strong>Study plan</strong>' + payload.plan.filter(day => day && typeof day === "object").map(day => '<p><b>Day ' + escapeHtml(day.day) + '</b>: ' + escapeHtml(day.focus) + '<br>' + (Array.isArray(day.references) ? day.references.map(escapeHtml).join(' · ') : '') + '</p>').join('') + '</div>';
     if (payload.reflection) {
       extra += '<div class="reflection"><strong>Carry this with you</strong><p>' + escapeHtml(payload.reflection) + '</p></div>';
     }
@@ -418,9 +437,11 @@ function renderMessages() {
 function setActiveButtons() {
   document.querySelectorAll("[data-mode]").forEach(function(btn){
     btn.classList.toggle("active", btn.getAttribute("data-mode") === state.mode);
+    btn.setAttribute("aria-pressed", String(btn.getAttribute("data-mode") === state.mode));
   });
   document.querySelectorAll("[data-lang]").forEach(function(btn){
     btn.classList.toggle("active", btn.getAttribute("data-lang") === state.language);
+    btn.setAttribute("aria-pressed", String(btn.getAttribute("data-lang") === state.language));
   });
 }
 
@@ -451,6 +472,9 @@ function setBusy(busy) {
   state.busy = busy;
   sendBtn.disabled = busy;
   input.disabled = busy;
+  clearBtn.disabled = busy;
+  document.querySelectorAll("[data-mode], [data-lang]").forEach(btn => { btn.disabled = busy; });
+  conversation.setAttribute("aria-busy", String(busy));
   sendBtn.textContent = busy ? "Searching…" : "Ask Versiah";
 }
 
@@ -468,13 +492,16 @@ async function sendMessage() {
   addTyping();
   setBusy(true);
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 150000);
   try {
-    const history = state.messages.slice(-9).map(function(item){
+    const history = state.messages.slice(0, -1).slice(-8).map(function(item){
       return { role: item.role, text: item.role === "user" ? item.text : (item.data && item.data.answer) || item.text };
     });
 
     const response = await fetch(API, {
       method: "POST",
+      signal: controller.signal,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         message: text,
@@ -486,6 +513,7 @@ async function sendMessage() {
 
     const data = await response.json().catch(function(){ return {}; });
     if (!response.ok) throw new Error(data.error || "Versiah could not answer right now.");
+    if (typeof data.answer !== "string" || !data.answer.trim()) throw new Error("The response was incomplete. Please try again.");
 
     state.messages.push({
       role: "assistant",
@@ -500,14 +528,18 @@ async function sendMessage() {
     state.messages.pop();
     saveState();
     renderMessages();
-    setError(error && error.message ? error.message : "Something went wrong. Please try again.");
+    input.value = text;
+    updateCount();
+    setError(error && error.name === "AbortError" ? "The request timed out. Your message is ready to retry." : error && error.message ? error.message : "Something went wrong. Please try again.");
   } finally {
+    clearTimeout(timer);
     setBusy(false);
     input.focus();
   }
 }
 
 function newConversation() {
+  if (state.busy) return;
   if (state.messages.length && !confirm("Start a new Versiah conversation?")) return;
   state.messages = [];
   saveState();
@@ -535,16 +567,30 @@ document.querySelectorAll("[data-lang]").forEach(function(btn){
   });
 });
 
+exportBtn.addEventListener("click", function(){
+  if (!state.messages.length) { setError("Start a conversation before exporting."); return; }
+  const text = state.messages.map(item => {
+    if (item.role === 'user') return 'You: ' + item.text;
+    const d=item.data || {};
+    return 'Versiah (AI): ' + (d.answer || item.text || '') + '\n' + (d.reflection || '') + '\n' + (d.prayer || '') + '\n' + (d.scriptures || []).map(s => s.reference + ' (WEB)\n' + (s.verses || []).map(v => v.text).join(' ')).join('\n') + '\n' + (d.plan || []).map(day => 'Day ' + day.day + ': ' + day.focus + ' — ' + day.references.join(', ')).join('\n');
+  }).join('\n\n');
+  const blob = new Blob(['The Pulpit — personal conversation export. Keep this file private.\n\n' + text], {type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pulpit-conversation.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 sendBtn.addEventListener("click", sendMessage);
 clearBtn.addEventListener("click", newConversation);
 input.addEventListener("input", updateCount);
 input.addEventListener("keydown", function(event){
-  if (event.key === "Enter" && !event.shiftKey) {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
     event.preventDefault();
     sendMessage();
   }
 });
 
+rememberHistory.addEventListener("change", function(){
+  state.remember = rememberHistory.checked;
+  saveState();
+});
 loadState();
 setActiveButtons();
 updateCount();

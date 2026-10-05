@@ -1,3 +1,4 @@
+import { protect, env } from './access.mjs';
 const API_BIBLE_BASE = "https://api.scripture.api.bible/v1";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 const LANGUAGE_CODES = { yo: "yor", ha: "hau", ig: "ibo" };
@@ -105,7 +106,12 @@ async function getPassage(bibleId, reference) {
   };
 }
 
-exports.handler = async (event) => {
+const run = async (event) => {
+  if (event.httpMethod === 'GET' && (env('BIBLE_LICENSE_CONFIRMED') !== 'true' || !env('BIBLE_API_KEY'))) {
+    return respond(200, { languages: {yo: [], ha: [], ig: []}, disabled: true, error: 'Licensed Bible editions are not enabled.' });
+  }
+  if (event.httpMethod === 'GET') { const denied=await protect(event); if(denied)return denied; }
+
   if (event.httpMethod === "OPTIONS") return respond(204, {});
   if (event.httpMethod !== "GET") return respond(405, { error: "Method not allowed." });
 
@@ -141,3 +147,6 @@ exports.handler = async (event) => {
     return respond(502, { error: err.message || "Bible service unavailable." });
   }
 };
+
+export {run};
+export default {run};

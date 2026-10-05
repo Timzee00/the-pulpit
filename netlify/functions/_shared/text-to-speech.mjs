@@ -1,3 +1,4 @@
+import { protect } from './access.mjs';
 // ============================================================
 //  Netlify Function: text-to-speech.js | Version 1.0
 //
@@ -47,7 +48,7 @@ function respondJSON(statusCode, obj) {
   };
 }
 
-exports.handler = async (event) => {
+const run = async (event) => {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders(), body: "" };
   }
@@ -55,6 +56,8 @@ exports.handler = async (event) => {
     return respondJSON(405, { error: "Method not allowed." });
   }
 
+  const denied = await protect(event, { cost: 3 });
+  if (denied) return denied;
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     return respondJSON(501, { error: "Voice reading isn't configured yet (missing ELEVENLABS_API_KEY)." });
@@ -64,6 +67,7 @@ exports.handler = async (event) => {
   try { body = JSON.parse(event.body || "{}"); }
   catch { return respondJSON(400, { error: "Invalid request body." }); }
 
+  if (!body || typeof body.text !== "string" || typeof body.lang !== "string") return respondJSON(400,{error:"Text and language are required."});
   const text = (body.text || "").trim();
   const lang = (body.lang || "").trim();
 
@@ -74,9 +78,9 @@ exports.handler = async (event) => {
 
   const voiceId = VOICE_ID_BY_LANG[lang] || DEFAULT_VOICE_ID;
 
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
 
     const res = await fetch(`${ELEVENLABS_ENDPOINT}/${voiceId}`, {
       method: "POST",
@@ -92,13 +96,13 @@ exports.handler = async (event) => {
         voice_settings: { stability: 0.5, similarity_boost: 0.75 },
       }),
     });
-    clearTimeout(timer);
+
 
     if (!res.ok) {
       const t = await res.text().catch(() => "");
       // 401 on ElevenLabs commonly means quota exhausted, not just a bad key
       const status = res.status === 401 ? 429 : res.status;
-      return respondJSON(status, { error: "Voice generation failed (the free quota may be used up for this month).", detail: t.slice(0, 200) });
+      return respondJSON(status, { error: "Voice generation failed (the free quota may be used up for this month).",  });
     }
 
     const arrayBuffer = await res.arrayBuffer();
@@ -111,6 +115,9 @@ exports.handler = async (event) => {
       isBase64Encoded: true,
     };
   } catch (err) {
-    return respondJSON(502, { error: "Voice generation failed.", detail: err.message });
-  }
+    return respondJSON(502, { error: "Voice generation failed." });
+  } finally { clearTimeout(timer); }
 };
+
+export {run};
+export default {run};
