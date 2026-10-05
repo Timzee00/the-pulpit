@@ -221,3 +221,22 @@ After deploying, check:
 3. Yoruba, Hausa, and Igbo entries appear only when your API.Bible account actually authorizes editions for those languages.
 4. Pulpitpedia returns source records even when AI synthesis is unavailable.
 5. `npm test` passes before pushing a release.
+
+## Versiah — Scripture companion
+
+The Pulpit now includes **Versiah**, a standalone Scripture-grounded AI companion at `/versiah.html`. Users can bring a personal question, choose Talk / Study Scripture / Pray, and receive an AI response grounded in Bible passages that are verified server-side before being shown.
+
+Versiah reuses the existing `GROQ_API_KEY` and `OPENROUTER_API_KEY` environment variables. It uses the World English Bible (WEB) through `bible-api.com` for verified Scripture text, avoiding redistribution of copyrighted Bible translations. Conversation history is stored locally in the user's browser; messages are sent to the secure Netlify function for processing.
+
+### Featuring Versiah on another site
+
+The repository includes `public/versiah-widget.js`, a small embeddable feature card intended for partner or feature sites such as LagosLife. It opens the standalone companion in a new tab instead of using an iframe, so the existing `X-Frame-Options: DENY` security policy can remain in place.
+
+Example:
+
+```html
+<div id="versiah-feature"></div>
+<script src="https://YOUR-PULPIT-DOMAIN/versiah-widget.js" data-target="#versiah-feature"></script>
+```
+
+Replace `YOUR-PULPIT-DOMAIN` with the live Pulpit domain. No AI key is exposed to the embedding site.
