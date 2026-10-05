@@ -1,58 +1,24 @@
-# ============================================================
-#  The Pulpit — Sermon Helper AI
-#  Netlify Configuration
-# ============================================================
-
 [build]
-  # The folder Netlify will publish — your HTML lives here
+  command = "npm test"
   publish = "public"
-
-  # Netlify auto-discovers functions in this folder
   functions = "netlify/functions"
-
-# ── Redirects & Proxying ─────────────────────────────────────
-
-# All requests to /api/* are proxied to Netlify Functions
-# This keeps function URLs clean and avoids CORS issues in production
+[build.environment]
+  NODE_VERSION = "22"
+[functions]
+  node_bundler = "esbuild"
 [[redirects]]
-  from   = "/api/*"
-  to     = "/.netlify/functions/:splat"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
-
-# SPA fallback — serve index.html for any unmatched route
 [[redirects]]
-  from   = "/*"
-  to     = "/index.html"
-  status = 200
-
-# ── Security Headers ─────────────────────────────────────────
-
+  from = "/versiah"
+  to = "/versiah.html"
+  status = 301
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options         = "DENY"
-    X-Content-Type-Options  = "nosniff"
-    Referrer-Policy         = "strict-origin-when-cross-origin"
-    Permissions-Policy      = "camera=(), microphone=(), geolocation=()"
-    # Add CSP header to prevent injection attacks
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' fonts.googleapis.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com fonts.gstatic.com; font-src fonts.gstatic.com; media-src 'self' blob:; connect-src 'self' https://bible-api.com"
-
-# ── Function Config ──────────────────────────────────────────
-
-[functions]
-  # Extend timeout for long AI generation requests (max 26s on free, 900s on Pro)
-  # Set to 26 for Netlify Starter, increase if on Pro plan
-  [functions."generate-sermon"]
-    timeout = 26
-  [functions."versiah"]
-    timeout = 26
-  [functions."text-to-speech"]
-    timeout = 26
-
-# ── Environment (do NOT put real keys here — use Netlify dashboard) ─────
-# Go to: Site Settings → Environment Variables → Add variable
-#
-#   Key   : OPENROUTER_API_KEY
-#   Value : sk-or-v1-your-actual-key-here
-#
-# That's it. Never commit real keys to this file.
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://bible-api.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"

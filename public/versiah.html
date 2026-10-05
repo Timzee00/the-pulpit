@@ -234,6 +234,7 @@ textarea:focus{border-color:rgba(201,168,76,.45);box-shadow:0 0 0 3px rgba(201,1
 button:focus-visible,a:focus-visible{outline:2px solid var(--gold-light);outline-offset:4px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important}}
 </style>
+<script src="/access.js" defer></script>
 </head>
 <body>
 <header class="topbar">
@@ -245,6 +246,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold-light);outline
     </span>
   </a>
   <div class="top-actions">
+    <button class="ghost-btn" id="exportBtn">Export conversation</button>
     <button class="ghost-btn" id="clearBtn">New conversation</button>
     <a class="ghost-btn" href="/">Back to Pulpit</a>
   </div>
@@ -261,7 +263,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold-light);outline
     <aside class="hero-side">
       <div>
         <div class="side-title">Scripture first</div>
-        <div class="side-copy">The answer is generated from verified Bible passages rather than asking the model to invent verses.</div>
+        <div class="side-copy">Passage cards contain retrieved Bible text. The explanation is AI-generated and can be mistaken; read the passages in context.</div>
       </div>
       <div class="trust">
         <div class="trust-item"><strong>Verified passages</strong><span>References are checked before they are shown.</span></div>
@@ -324,6 +326,7 @@ const clearBtn = document.getElementById("clearBtn");
 const errorBox = document.getElementById("error");
 const count = document.getElementById("count");
 const rememberHistory = document.getElementById("rememberHistory");
+const exportBtn = document.getElementById("exportBtn");
 const source = new URLSearchParams(location.search).get("source") || "";
 
 function escapeHtml(value) {
@@ -336,6 +339,7 @@ function escapeHtml(value) {
 }
 
 function saveState() {
+  state.messages = state.messages.slice(-30);
   try {
     if (state.remember) localStorage.setItem(STORAGE, JSON.stringify(state.messages.slice(-30)));
     else localStorage.removeItem(STORAGE);
@@ -395,9 +399,9 @@ function renderMessages() {
     }
 
     const payload = item.data || {};
-    const scriptures = Array.isArray(payload.scriptures) ? payload.scriptures : [];
+    const scriptures = Array.isArray(payload.scriptures) ? payload.scriptures.filter(s => s && typeof s === "object") : [];
     const scriptureHtml = scriptures.map(function(s) {
-      const verseHtml = Array.isArray(s.verses) ? s.verses.map(function(v) {
+      const verseHtml = Array.isArray(s.verses) ? s.verses.filter(v => v && typeof v === "object").map(function(v) {
         return (v.verse ? '<span class="scripture-ref">Verse ' + escapeHtml(v.verse) + '</span> ' : "") +
           escapeHtml(v.text || "");
       }).join("<br>") : escapeHtml(s.text || "");
@@ -408,6 +412,8 @@ function renderMessages() {
     }).join("");
 
     let extra = "";
+    if (Array.isArray(payload.citations) && payload.citations.length) extra += '<div class="note">Based on: ' + payload.citations.map(escapeHtml).join(' · ') + '</div>';
+    if (Array.isArray(payload.plan) && payload.plan.length) extra += '<div class="reflection"><strong>Study plan</strong>' + payload.plan.filter(day => day && typeof day === "object").map(day => '<p><b>Day ' + escapeHtml(day.day) + '</b>: ' + escapeHtml(day.focus) + '<br>' + (Array.isArray(day.references) ? day.references.map(escapeHtml).join(' · ') : '') + '</p>').join('') + '</div>';
     if (payload.reflection) {
       extra += '<div class="reflection"><strong>Carry this with you</strong><p>' + escapeHtml(payload.reflection) + '</p></div>';
     }
@@ -487,7 +493,7 @@ async function sendMessage() {
   setBusy(true);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const timer = setTimeout(() => controller.abort(), 150000);
   try {
     const history = state.messages.slice(0, -1).slice(-8).map(function(item){
       return { role: item.role, text: item.role === "user" ? item.text : (item.data && item.data.answer) || item.text };
@@ -561,6 +567,16 @@ document.querySelectorAll("[data-lang]").forEach(function(btn){
   });
 });
 
+exportBtn.addEventListener("click", function(){
+  if (!state.messages.length) { setError("Start a conversation before exporting."); return; }
+  const text = state.messages.map(item => {
+    if (item.role === 'user') return 'You: ' + item.text;
+    const d=item.data || {};
+    return 'Versiah (AI): ' + (d.answer || item.text || '') + '\n' + (d.reflection || '') + '\n' + (d.prayer || '') + '\n' + (d.scriptures || []).map(s => s.reference + ' (WEB)\n' + (s.verses || []).map(v => v.text).join(' ')).join('\n') + '\n' + (d.plan || []).map(day => 'Day ' + day.day + ': ' + day.focus + ' — ' + day.references.join(', ')).join('\n');
+  }).join('\n\n');
+  const blob = new Blob(['The Pulpit — personal conversation export. Keep this file private.\n\n' + text], {type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pulpit-conversation.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 sendBtn.addEventListener("click", sendMessage);
 clearBtn.addEventListener("click", newConversation);
 input.addEventListener("input", updateCount);

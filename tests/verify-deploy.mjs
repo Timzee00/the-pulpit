@@ -1,0 +1,6 @@
+const base=process.argv[2];if(!base||!/^https:\/\//.test(base))throw Error('Usage: npm run verify:deploy -- https://YOUR-SITE.netlify.app');
+const url=new URL(base);async function get(path,options={}){return fetch(new URL(path,url),{...options,signal:AbortSignal.timeout(20000)});}
+for(const p of ['/','/versiah.html','/access.js','/versiah-widget.js','/privacy.html','/setup.html']){const r=await get(p);if(!r.ok)throw Error(`Missing ${p}: ${r.status}`);const type=r.headers.get('content-type')||'';if(p.endsWith('.js')&&!/(javascript|ecmascript)/.test(type))throw Error(`Incorrect script MIME: ${p}`);console.log('Available:',p);}
+const h=await get('/api/health');const data=await h.json();if(!data.ok)throw Error('Missing configuration: '+data.missing.join(', '));console.log('Configuration ready:',data.version,data.release);
+for(const p of ['/api/versiah','/.netlify/functions/versiah']){const r=await get(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'Explain John 3:16'})});if(r.status!==401)throw Error(`Unexpected unverified access status at ${p}: ${r.status}`);console.log('Unverified AI access rejected:',p);}
+console.log('Deployment checks passed. Run /setup.html live AI check and review outputs next. No live AI availability has been established by this script.');

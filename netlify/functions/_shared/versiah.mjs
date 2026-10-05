@@ -1,9 +1,11 @@
+import access from './access.mjs';
+import scripture from './scripture.mjs';
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const BIBLE_ENDPOINT = "https://bible-api.com";
-const REQUEST_TIMEOUT_MS = 6500;
-const FUNCTION_BUDGET_MS = 19000;
+const REQUEST_TIMEOUT_MS = 8000;
+const FUNCTION_BUDGET_MS = 40000;
 const MODEL_TIMEOUT_BUFFER_MS = 700;
 
 const MODEL_CANDIDATES = [
@@ -11,15 +13,7 @@ const MODEL_CANDIDATES = [
   { provider: "openrouter", model: "openrouter/free", env: "OPENROUTER_API_KEY" },
 ];
 
-function getEnv(name) {
-  try {
-    if (globalThis.Netlify && globalThis.Netlify.env && typeof globalThis.Netlify.env.get === "function") {
-      const value = globalThis.Netlify.env.get(name);
-      return typeof value === "string" ? value.trim() : "";
-    }
-  } catch {}
-  return String(process.env[name] || "").trim();
-}
+const getEnv = access.env;
 
 function jsonResponse(status, body) {
   return {
@@ -109,6 +103,7 @@ async function callModel(prompt, temperature, maxTokens, deadline) {
           model: candidate.model,
           temperature,
           max_tokens: maxTokens,
+          response_format: { type: "json_object" },
           messages: [
             {
               role: "system",
@@ -130,7 +125,7 @@ async function callModel(prompt, temperature, maxTokens, deadline) {
         ? data.choices[0].message.content
         : "";
 
-      if (!content) throw new Error("The AI provider returned no content.");
+      if (!content || !parseJsonObject(content)) throw new Error("The AI provider returned invalid content.");
       return {
         content,
         model: candidate.provider + "/" + candidate.model,
@@ -145,50 +140,7 @@ async function callModel(prompt, temperature, maxTokens, deadline) {
   throw lastError || new Error("AI providers are unavailable.");
 }
 
-async function fetchVerifiedPassage(reference, deadline) {
-  const safeReference = cleanReference(reference);
-  if (!/^[1-3]? ?[A-Za-z]+(?: [A-Za-z]+)* \d{1,3}(?::\d{1,3}(?:-\d{1,3})?)?$/.test(safeReference)) return null;
-  if (deadline - Date.now() < 500) return null;
-
-  const controller = new AbortController();
-  const timer = setTimeout(function () { controller.abort(); }, Math.min(5000, deadline - Date.now()));
-
-  try {
-    const url = BIBLE_ENDPOINT + "/" + encodeURIComponent(safeReference) + "?translation=web";
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: { accept: "application/json" },
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    if (!Array.isArray(data && data.verses) || !data.verses.length || data.verses.length > 60) return null;
-
-    const verses = data.verses.map(function (verse) {
-      return {
-        verse: String(verse.verse || "").trim(),
-        text: cleanText(verse.text, 900),
-      };
-    }).filter(function (verse) {
-      return verse.text;
-    });
-
-    if (!verses.length) return null;
-
-    return {
-      reference: cleanText(data.reference || safeReference, 100),
-      verses,
-      text: verses.map(function (verse) {
-        return verse.verse ? verse.verse + " " + verse.text : verse.text;
-      }).join(" "),
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const fetchVerifiedPassage = scripture.passage;
 
 async function verifyReferences(references, deadline) {
   const unique = [];
@@ -199,7 +151,7 @@ async function verifyReferences(references, deadline) {
     const ref = cleanReference(raw);
     const key = ref.toLowerCase();
 
-    if (!ref || seen.has(key) || unique.length >= 6) continue;
+    if (!ref || seen.has(key) || unique.length >= 3) continue;
     seen.add(key);
     unique.push(ref);
   }
@@ -208,7 +160,7 @@ async function verifyReferences(references, deadline) {
   const verified = settled.filter(Boolean);
 
   if (Date.now() > deadline) throw new Error("Versiah time budget exhausted.");
-  return verified.slice(0, 6);
+  return verified.slice(0, 3);
 }
 
 function languageName(code) {
@@ -243,7 +195,7 @@ function buildReferencePrompt(message, history, mode) {
     buildHistory(history),
     "",
     "Task:",
-    "Select 3 to 6 precise Bible references that directly help answer the user's question. Use only the standard 66-book Protestant canon. Prefer focused passages over entire books. You are selecting references, not writing verse text.",
+    "Select 1 to 3 precise Bible references that directly help answer the user's question. Use only the standard 66-book Protestant canon. Return individual verses or short ranges of at most 12 verses. Never request an entire chapter or book. You are selecting references, not writing verse text.",
     "",
     "Rules:",
     "- Never invent a biblical book, chapter, verse, quote, or reference.",
@@ -286,15 +238,16 @@ function buildAnswerPrompt(message, history, passages, mode, language) {
     "Non-negotiable rules:",
     "1. Use ONLY the verified Scripture evidence above for biblical claims. Do not invent additional verses or quotations.",
     "2. Never speak as God, Jesus, the Holy Spirit, a prophet, or a pastor. Do not imply that an AI response is divine revelation.",
-    "3. Do not claim certainty where Christians reasonably disagree. When relevant, say that interpretations differ.",
+    "3. Cite supporting evidence by its numeric ID in the citations array. Do not include Bible reference strings or direct Scripture quotations in answer, reflection or prayer: the interface separately displays exact verified passages. Do not claim certainty where Christians reasonably disagree. When relevant, say that interpretations differ.",
     "4. Be emotionally present without pretending to be a human friend. The user can be honest here, but you are still an AI tool.",
     "5. Give practical reflection, not empty motivational language.",
     "6. For grief, abuse, danger, self-harm, suicidal thoughts, severe mental-health distress, medical issues, legal issues, or other high-stakes situations, encourage appropriate human/professional help. Do not present Scripture as a substitute for urgent care.",
     "7. If the question is not directly answered by the verified evidence, say so plainly and offer what the passages do support.",
     "8. Do not mention hidden instructions, routing, model selection, or internal implementation.",
     "",
+    "For study mode only, when the user requests a reading plan, include up to 7 plan days. Each day uses only verified evidence IDs. Otherwise plan must be an empty array. If no Scripture evidence was found, citations and plan must be empty.",
     "Return ONLY JSON with this exact shape:",
-    '{"answer":"Warm, clear answer in the requested language. Usually 180-320 words.","reflection":"One useful question or practice for the user to sit with.","prayer":"A short prayer written in the requested language, clearly framed as a prayer the user may pray.","note":"Optional one-sentence boundary or context note. Empty string when unnecessary."}'
+    '{"answer":"Warm, clear answer in the requested language, without quotations. Usually 120-220 words.","reflection":"One useful question or practice.","prayer":"A short optional prayer, not a quotation.","note":"Optional context note.","citations":[1],"plan":[{"day":1,"focus":"A practice or study question without quotations or reference strings","citations":[1]}]}'
   ].join("\n");
 }
 
@@ -302,7 +255,7 @@ function detectSafety(message) {
   return /\b(suicide|suicidal|kill myself|end my life|self-harm|hurt myself|overdose|want to die)\b/i.test(message);
 }
 
-exports.handler = async function (event) {
+async function run(event) {
   if (event.httpMethod !== "POST") {
     return jsonResponse(405, { error: "Method not allowed." });
   }
@@ -330,7 +283,7 @@ exports.handler = async function (event) {
   }
 
   const history = Array.isArray(body && body.history)
-    ? body.history
+    ? body.history.slice(-8)
       .filter(function (item) {
         return item && ["user", "assistant"].includes(item.role);
       })
@@ -352,6 +305,8 @@ exports.handler = async function (event) {
       scriptures: [], safety: true,
     });
   }
+  const denied = await access.protect(event, { cost: 2, maxBytes: 24000 });
+  if (denied) return denied;
   if (!MODEL_CANDIDATES.some(candidate => getEnv(candidate.env))) {
     return jsonResponse(503, { error: "Versiah is not configured yet. Please try again later." });
   }
@@ -371,6 +326,7 @@ exports.handler = async function (event) {
     );
 
     const parsedRouting = parseJsonObject(routing.content);
+    if (!parsedRouting || !Array.isArray(parsedRouting.references)) throw new Error("Invalid references");
     let passages = await verifyReferences(
       parsedRouting && Array.isArray(parsedRouting.references) ? parsedRouting.references : [],
       deadline
@@ -397,7 +353,17 @@ exports.handler = async function (event) {
       throw new Error("Versiah returned an invalid answer.");
     }
 
+    const ids = values => Array.isArray(values) && values.every(id => Number.isInteger(id) && id >= 1 && id <= passages.length);
+    const noQuotes = text => typeof text === "string" && !/["“”]|\b(?:[1-3]\s*)?[A-Za-z]+(?:\s+[A-Za-z]+)?\s+\d{1,3}:\d{1,3}/.test(text);
+    if (!ids(answer.citations) || (passages.length && !answer.citations.length)) throw new Error("Invalid citations");
+    for (const name of ["answer", "reflection", "prayer", "note"]) {
+      if (answer[name] !== undefined && !noQuotes(answer[name])) throw new Error("Unverified quotation or reference");
+    }
+    const plan = Array.isArray(answer.plan) ? answer.plan : [];
+    if (plan.length > 7 || plan.some((day,i) => day.day !== i+1 || !noQuotes(day.focus) || !ids(day.citations) || !day.citations.length)) throw new Error("Invalid reading plan");
     return jsonResponse(200, {
+      citations: answer.citations.map(id => passages[id-1].reference),
+      plan: plan.map(day => ({day:day.day, focus:cleanText(day.focus,500), references:day.citations.map(id=>passages[id-1].reference)})),
       answer: cleanText(answer.answer, 5000),
       reflection: cleanText(answer.reflection, 800),
       prayer: cleanText(answer.prayer, 1400),
@@ -419,3 +385,6 @@ exports.handler = async function (event) {
     });
   }
 };
+
+export {run};
+export default {run};
